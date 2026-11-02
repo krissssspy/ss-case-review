@@ -22,6 +22,8 @@ test('parses Gemini claims and validates every citation against authorized sourc
     expect(prompt).toContain('Return only a JSON array of claims');
     expect(prompt).toContain('chronology');
     expect(prompt).toContain('importance');
+    expect(prompt).toContain('source-unit-a');
+    expect(prompt).toContain(source.rawText);
     expect(maxOutputTokens).toBe(2_048);
     return {
       status: 'generated' as const,
