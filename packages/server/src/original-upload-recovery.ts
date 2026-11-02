@@ -1,5 +1,8 @@
 import type { SqlClient } from '@record-review/case-repository/cases';
-import { listOriginalReferencesForReviewer } from '@record-review/case-repository/cases';
+import {
+  listCasesForReviewer,
+  listOriginalReferencesForReviewer,
+} from '@record-review/case-repository/cases';
 import {
   failOriginalUpload,
   listRecoverableOriginalUploads,
@@ -48,6 +51,29 @@ export async function reconcileOriginalReferencesForReviewer(
     }
   }
   return { checked: references.length, missing, integrityFailures };
+}
+
+export async function reconcileAllOriginalReferencesForReviewer(
+  input: Readonly<{
+    database: SqlClient;
+    reviewerId: string;
+    root: string;
+  }>,
+): Promise<Readonly<{ checked: number; missing: number; integrityFailures: number }>> {
+  const cases = await listCasesForReviewer(input.database, input.reviewerId);
+  const totals = { checked: 0, missing: 0, integrityFailures: 0 };
+  for (const record of cases) {
+    const result = await reconcileOriginalReferencesForReviewer({
+      database: input.database,
+      reviewerId: input.reviewerId,
+      caseId: record.caseId,
+      root: input.root,
+    });
+    totals.checked += result.checked;
+    totals.missing += result.missing;
+    totals.integrityFailures += result.integrityFailures;
+  }
+  return totals;
 }
 
 export async function recoverStaleOriginalUploads(
