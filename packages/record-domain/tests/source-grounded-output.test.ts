@@ -166,6 +166,7 @@ test('preserves validated chronology metadata on a grounded claim', () => {
       provider: 'Dr. Rivera',
       reason: 'Follow-up evaluation',
       prescription: 'Continue physical therapy',
+      importance: 'important',
     },
     source: {
       recordRevision: 1,
@@ -186,6 +187,7 @@ test('preserves validated chronology metadata on a grounded claim', () => {
       provider: 'Dr. Rivera',
       reason: 'Follow-up evaluation',
       prescription: 'Continue physical therapy',
+      importance: 'important',
     },
   });
 });

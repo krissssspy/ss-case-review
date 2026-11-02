@@ -21,6 +21,7 @@ test('parses Gemini claims and validates every citation against authorized sourc
   }) => {
     expect(prompt).toContain('Return only a JSON array of claims');
     expect(prompt).toContain('chronology');
+    expect(prompt).toContain('importance');
     expect(maxOutputTokens).toBe(2_048);
     return {
       status: 'generated' as const,
@@ -303,6 +304,7 @@ test('validates every chronology field before accepting a generated claim', asyn
       reason: 'Follow-up evaluation',
       prescription: 'Continue physical therapy',
       name: 'ALJ hearing',
+      importance: 'important',
     },
     source: {
       recordRevision: 1,
@@ -323,6 +325,7 @@ test('validates every chronology field before accepting a generated claim', asyn
     { date: 1 },
     { date: ' ' },
     { date: '2024-03-12', provider: 1 },
+    { date: '2024-03-12', importance: 'urgent' },
     { date: '2024-03-12', reason: 1 },
     { date: '2024-03-12', prescription: 1 },
     { date: '2024-03-12', name: 1 },

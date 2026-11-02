@@ -10,6 +10,7 @@ export type GeneratedClaimChronology = Readonly<{
   reason?: string;
   prescription?: string;
   name?: string;
+  importance?: 'important';
 }>;
 
 export type GeneratedClaim = Readonly<{
