@@ -84,6 +84,11 @@ export async function startDevelopmentServer(environment: ServerEnvironment) {
             olderThan: new Date(Date.now() - STALE_UPLOAD_AGE_MILLISECONDS),
             limit: UPLOAD_RECOVERY_LIMIT,
           });
+          await reconcileAllOriginalReferencesForReviewer({
+            database,
+            reviewerId: identity.reviewerId,
+            root: originalStorage.root,
+          });
         },
         ...(generateClaims ? { generateClaims } : {}),
       });

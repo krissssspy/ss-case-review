@@ -317,3 +317,18 @@ test('reconciles every registered original before accepting new requests', async
     root,
   });
 });
+
+test('reconciles every registered original during scheduled recovery', async () => {
+  const root = join(tmpdir(), 'record-review-synthetic-originals');
+  await startDevelopmentServer({ ...environment, DEVELOPMENT_ORIGINAL_STORAGE_ROOT: root });
+
+  const scheduler = vi.mocked(startDocumentProcessingScheduler).mock.calls[0]?.[0];
+  if (!scheduler) throw new Error('Expected scheduler configuration');
+  await scheduler.recoverStale?.();
+
+  expect(reconcileAllOriginalReferencesForReviewer).toHaveBeenNthCalledWith(2, {
+    database,
+    reviewerId: '00000000-0000-4000-8000-000000000011',
+    root,
+  });
+});
