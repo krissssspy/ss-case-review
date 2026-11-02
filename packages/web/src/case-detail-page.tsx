@@ -501,6 +501,9 @@ export function SyntheticArtifactSection({
 }) {
   const [processing, setProcessing] = useState<SyntheticDocumentProcessing[] | 'unavailable'>();
   const [query, setQuery] = useState('');
+  const [verificationFilter, setVerificationFilter] = useState<'all' | 'verified' | 'unverified'>(
+    'all',
+  );
   const load = useCallback(() => {
     setProcessing(undefined);
     void listSyntheticDocumentProcessing(caseId).then(setProcessing, () =>
@@ -521,8 +524,10 @@ export function SyntheticArtifactSection({
       : /* Stryker disable next-line ArrayDeclaration -- the loading branch renders before this fallback can affect output. */ [],
   );
   const normalizedQuery = query.trim().toLocaleLowerCase();
-  const filteredClaims = claims.filter((claim) =>
-    claim.text.toLocaleLowerCase().includes(normalizedQuery),
+  const filteredClaims = claims.filter(
+    (claim) =>
+      claim.text.toLocaleLowerCase().includes(normalizedQuery) &&
+      (verificationFilter === 'all' || claim.status === verificationFilter),
   );
   const heading = ARTIFACT_SECTION_LABELS[section];
   return (
@@ -554,6 +559,20 @@ export function SyntheticArtifactSection({
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
+          <label className="source-quote-label" htmlFor="artifact-verification-filter">
+            Filter {heading.toLocaleLowerCase()}
+          </label>
+          <select
+            id="artifact-verification-filter"
+            value={verificationFilter}
+            onChange={(event) =>
+              setVerificationFilter(event.target.value as 'all' | 'verified' | 'unverified')
+            }
+          >
+            <option value="all">All entries</option>
+            <option value="verified">Evidence located</option>
+            <option value="unverified">Needs investigation</option>
+          </select>
           {filteredClaims.length === 0 ? (
             <p>No classified entries match this search.</p>
           ) : (

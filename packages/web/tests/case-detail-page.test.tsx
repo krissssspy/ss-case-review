@@ -981,7 +981,9 @@ test('filters classified artifact entries with a case-insensitive search', async
   ]);
   const user = userEvent.setup();
   render(<SyntheticArtifactSection caseId={caseId} section="medical" />);
-  expect(await screen.findByText('The MRI showed degenerative changes.')).toBeVisible();
+  expect(
+    (await screen.findAllByText('The MRI showed degenerative changes.')).length,
+  ).toBeGreaterThan(0);
   expect(screen.getByText('The claimant completed physical therapy.')).toBeVisible();
   await user.type(screen.getByLabelText('Search medical chronology'), '  mRi  ');
   expect(screen.getByText('The MRI showed degenerative changes.')).toBeVisible();
@@ -989,6 +991,58 @@ test('filters classified artifact entries with a case-insensitive search', async
   await user.clear(screen.getByLabelText('Search medical chronology'));
   await user.type(screen.getByLabelText('Search medical chronology'), 'no match');
   expect(screen.getByText('No classified entries match this search.')).toBeVisible();
+});
+
+test('filters classified artifact entries by verification status', async () => {
+  const caseId = '00000000-0000-4000-8000-000000000002';
+  vi.mocked(listSyntheticDocumentProcessing).mockResolvedValueOnce([
+    {
+      documentVersionId: '00000000-0000-4000-8000-000000000021',
+      extractionVersion: 'pdfjs-native-v1',
+      state: 'published',
+      attemptCount: 1,
+      failureCode: null,
+      claims: {
+        status: 'validated',
+        claims: [
+          {
+            status: 'verified',
+            claimId: 'medical-verified',
+            text: 'The MRI showed degenerative changes.',
+            section: 'medical',
+            source: {
+              caseId,
+              recordRevision: 1,
+              documentVersionId: '00000000-0000-4000-8000-000000000021',
+              documentSha256: 'a'.repeat(64),
+              extractionVersion: 'pdfjs-native-v1',
+              sourceUnitId: '00000000-0000-4000-8000-000000000031',
+              start: 0,
+              end: 32,
+              quote: 'The MRI showed degenerative changes.',
+            },
+          },
+          {
+            status: 'unverified',
+            claimId: 'medical-unverified',
+            text: 'The claimant completed physical therapy.',
+            section: 'medical',
+            message: "The review system couldn't find this evidence in the authorized case record.",
+            reason: 'quote_mismatch',
+          },
+        ],
+      },
+    },
+  ]);
+  const user = userEvent.setup();
+  render(<SyntheticArtifactSection caseId={caseId} section="medical" />);
+  expect(
+    (await screen.findAllByText('The MRI showed degenerative changes.')).length,
+  ).toBeGreaterThan(0);
+  expect(screen.getByText('The claimant completed physical therapy.')).toBeVisible();
+  await user.selectOptions(screen.getByLabelText('Filter medical chronology'), 'verified');
+  expect(screen.getAllByText('The MRI showed degenerative changes.').length).toBeGreaterThan(0);
+  expect(screen.queryByText('The claimant completed physical therapy.')).not.toBeInTheDocument();
 });
 
 test('reports and retries an unavailable artifact section', async () => {
