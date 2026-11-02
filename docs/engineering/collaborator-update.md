@@ -4,6 +4,8 @@ Date: November 2, 2026. Status: Phase 4 remains in progress. The application is 
 
 ## Latest increment
 
+The Five-step review section now groups explicitly numbered claims under Step 1 through Step 5 headings and keeps unnumbered claims under an Unassigned step heading. Grouping preserves direct quotations, investigation prompts, and source links. The full gate passes 381 fast tests, 10 native PostgreSQL tests, 9 Chromium workflows, 98.37% statement coverage, 97.08% branch coverage, and 100% mutation coverage across 4,401 mutants.
+
 Artifact sections now provide a reviewer-controlled verification-status filter alongside case-insensitive text search. Reviewers can show all entries, evidence located in the record, or entries needing investigation without changing source quotations, investigation-safe wording, or record links. The full gate passes 380 fast tests, 10 native PostgreSQL tests, 9 Chromium workflows, 98.43% statement coverage, 97.15% branch coverage, and 100% mutation coverage across 4,374 mutants.
 
 Guarded synthetic startup and each scheduled recovery cycle now scan every registered original for the configured reviewer after stale upload recovery. The scan distinguishes missing private files, integrity failures, and unexpected storage failures without inventing replacements or deleting case metadata. The full gate passes 379 fast tests, 10 native PostgreSQL tests, 9 Chromium workflows, 98.43% statement coverage, 97.15% branch coverage, and 100% mutation coverage across 4,361 mutants.
