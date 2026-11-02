@@ -1,8 +1,10 @@
 # Phase 4 collaborator update
 
-Date: November 1, 2026. Status: Phase 4 remains in progress. The application is not ready for court testing or real records.
+Date: November 2, 2026. Status: Phase 4 remains in progress. The application is not ready for court testing or real records.
 
 ## Latest increment
+
+Source-grounded claim generation now receives previously published, membership-authorized source pages together with newly extracted pages. The change gives cross-document review generation the authorized context needed to compare arguments while preserving case, revision, and source-provenance checks. The full gate passes 372 fast tests, 10 native PostgreSQL tests, 9 Chromium workflows, 98.39% statement coverage, 97.11% branch coverage, and 100% mutation coverage across 4,311 mutants.
 
 Source-grounded chronology metadata now supports an explicit `important` marker. The server validates the marker and asks the model to use it only when the supplied record explicitly supports a material milestone. The browser preserves the marker and highlights marked medical and procedural chronology rows without changing source text or adding claims. The full gate passes 371 fast tests, 10 native PostgreSQL tests, 9 Chromium workflows, 98.39% statement coverage, 97.11% branch coverage, and 100% mutation coverage across 4,308 mutants.
 
