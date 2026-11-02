@@ -26,6 +26,31 @@ export type TextSourceUnit = Readonly<{
 
 export type TextSourceReference = Omit<TextSourceUnit, 'rawText'>;
 
+export async function listTextSourceUnitsForReviewer(
+  client: SqlClient,
+  reviewerId: string,
+  caseId: string,
+): Promise<TextSourceUnit[]> {
+  const result = await client.query<TextSourceUnit>(
+    `SELECT sources.source_unit_id AS "sourceUnitId", sources.case_id AS "caseId",
+      sources.document_version_id AS "documentVersionId", sources.record_revision AS "recordRevision",
+      sources.document_sha256 AS "documentSha256", sources.extraction_version AS "extractionVersion",
+      sources.page_number AS "pageNumber", sources.raw_text AS "rawText", sources.geometry AS "geometry"
+    FROM text_source_units sources
+    JOIN case_memberships members ON members.case_id = sources.case_id
+    JOIN original_references originals ON originals.case_id = sources.case_id
+      AND originals.document_version_id = sources.document_version_id
+    JOIN cases ON cases.case_id = sources.case_id
+    WHERE sources.case_id = $1 AND members.reviewer_id = $2
+      AND originals.sha256 = sources.document_sha256
+      AND cases.record_revision = sources.record_revision
+    ORDER BY sources.document_version_id, sources.page_number,
+      sources.extraction_version, sources.source_unit_id`,
+    [caseId, reviewerId],
+  );
+  return result.rows;
+}
+
 export async function listTextSourcesForReviewer(
   client: SqlClient,
   reviewerId: string,

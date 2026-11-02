@@ -7,6 +7,7 @@ import {
   findTextSourceForReviewer,
   insertTextSourcesForReviewer,
   insertTextSourceForReviewer,
+  listTextSourceUnitsForReviewer,
   listTextSourcesForReviewer,
 } from '../src/source-units.ts';
 
@@ -229,4 +230,19 @@ test('lists only member-case text sources in stable physical page order', async 
     },
   ]);
   expect(await listTextSourcesForReviewer(database, otherReviewerId, source.caseId)).toEqual([]);
+});
+
+test('loads full member-case source text in stable physical page order', async () => {
+  const pageTwo = {
+    ...source,
+    sourceUnitId: '00000000-0000-4000-8000-000000000032',
+    pageNumber: 2,
+    rawText: 'Synthetic second page',
+  };
+  await insertTextSourcesForReviewer(database, reviewerId, [pageTwo, source]);
+
+  expect(await listTextSourceUnitsForReviewer(database, reviewerId, source.caseId)).toEqual([
+    source,
+    pageTwo,
+  ]);
 });
