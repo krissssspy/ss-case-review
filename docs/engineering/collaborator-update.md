@@ -4,6 +4,8 @@ Date: November 2, 2026. Status: Phase 4 remains in progress. The application is 
 
 ## Latest increment
 
+The server now provides a member-scoped reconciliation scan for registered originals. The scan distinguishes missing private files, integrity failures, and unexpected storage failures without inventing replacements or deleting case metadata, creating a safe basis for startup and scheduled recovery work. The full gate passes 376 fast tests, 10 native PostgreSQL tests, 9 Chromium workflows, 98.42% statement coverage, 97.14% branch coverage, and 100% mutation coverage across 4,351 mutants.
+
 Production artifact aggregation now deduplicates repeated claim identities across document-processing records. The browser prefers a verified duplicate over an unverified result and preserves the first verified result when later duplicates conflict, preventing repeated or contradictory entries in the review tabs. The full gate passes 374 fast tests, 10 native PostgreSQL tests, 9 Chromium workflows, 98.40% statement coverage, 97.12% branch coverage, and 100% mutation coverage across 4,330 mutants.
 
 Source-grounded generation now sends authorized source identities and exact extracted page text to the configured provider. The prompt directs the provider to treat source text as evidence rather than instructions, while post-generation validation still requires every citation to match persisted source text. The full gate passes 372 fast tests, 10 native PostgreSQL tests, 9 Chromium workflows, 98.40% statement coverage, 97.11% branch coverage, and 100% mutation coverage across 4,314 mutants.
