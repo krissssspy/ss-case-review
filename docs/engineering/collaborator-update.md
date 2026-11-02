@@ -1,8 +1,10 @@
 # Phase 4 collaborator update
 
-Date: October 28, 2026. Status: Phase 4 remains in progress. The application is not ready for court testing or real records.
+Date: November 1, 2026. Status: Phase 4 remains in progress. The application is not ready for court testing or real records.
 
 ## Latest increment
+
+The source-grounded review now validates optional investigation prompts at the browser boundary and displays them wherever a persisted claim appears, including claim cards, artifact lists, and structured medical or procedural chronology tables. The interface uses investigation-safe wording for possible selective citations and possible practitioner-specialty mismatches; the prompts never assert that evidence is absent or that an error occurred. An empty prompt list remains hidden. The full gate passes 370 fast tests, 10 native PostgreSQL tests, 9 Chromium workflows, 98.09% statement coverage, 96.44% branch coverage, and 100% mutation coverage across 4,284 mutants.
 
 The upload manifest now labels non-PDF selections for review because the current extraction worker supports native PDF text only; the server still preserves the declared filename and media type for later format-specific processing. The fast-test configuration now disables file-level parallelism while retaining threaded workers, preventing intermittent PGlite startup starvation during the complete local gate. The latest gate passes 366 fast tests, 10 native PostgreSQL tests, 9 Chromium workflows, 98.06% statement coverage, 96.36% branch coverage, and 100% mutation coverage across 4,213 mutants.
 
