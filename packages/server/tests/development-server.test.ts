@@ -8,14 +8,20 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { migrateCaseSchema } from '@record-review/case-repository/migrations';
 import { createDevelopmentApi } from '../src/case-api.ts';
 import { readDevelopmentDatabaseConfig } from '../src/development-database.ts';
-import { recoverStaleOriginalUploads } from '../src/original-upload-recovery.ts';
+import {
+  reconcileAllOriginalReferencesForReviewer,
+  recoverStaleOriginalUploads,
+} from '../src/original-upload-recovery.ts';
 import { startDevelopmentServer } from '../src/development-server.ts';
 import { startDocumentProcessingScheduler } from '../src/processing-scheduler.ts';
 
 vi.mock('pg', () => ({ Pool: vi.fn() }));
 vi.mock('@record-review/case-repository/migrations', () => ({ migrateCaseSchema: vi.fn() }));
 vi.mock('../src/case-api.ts', () => ({ createDevelopmentApi: vi.fn() }));
-vi.mock('../src/original-upload-recovery.ts', () => ({ recoverStaleOriginalUploads: vi.fn() }));
+vi.mock('../src/original-upload-recovery.ts', () => ({
+  reconcileAllOriginalReferencesForReviewer: vi.fn(),
+  recoverStaleOriginalUploads: vi.fn(),
+}));
 vi.mock('../src/processing-scheduler.ts', () => ({ startDocumentProcessingScheduler: vi.fn() }));
 
 test('handles an idle database error with a fixed diagnostic instead of exposing details', async () => {
@@ -100,6 +106,11 @@ beforeEach(() => {
   vi.mocked(createDevelopmentApi).mockReturnValue(api);
   vi.mocked(migrateCaseSchema).mockResolvedValue([]);
   vi.mocked(recoverStaleOriginalUploads).mockResolvedValue(0);
+  vi.mocked(reconcileAllOriginalReferencesForReviewer).mockResolvedValue({
+    checked: 0,
+    missing: 0,
+    integrityFailures: 0,
+  });
   vi.mocked(startDocumentProcessingScheduler).mockReturnValue(stopProcessing);
 });
 
@@ -293,4 +304,16 @@ test('recovers stale synthetic uploads before accepting new requests', async () 
   } finally {
     vi.useRealTimers();
   }
+});
+
+test('reconciles every registered original before accepting new requests', async () => {
+  const root = join(tmpdir(), 'record-review-synthetic-originals');
+
+  await startDevelopmentServer({ ...environment, DEVELOPMENT_ORIGINAL_STORAGE_ROOT: root });
+
+  expect(reconcileAllOriginalReferencesForReviewer).toHaveBeenCalledExactlyOnceWith({
+    database,
+    reviewerId: '00000000-0000-4000-8000-000000000011',
+    root,
+  });
 });

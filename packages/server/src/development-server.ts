@@ -9,7 +9,10 @@ import type { TextSourceUnit } from '@record-review/case-repository/source-units
 import { createDevelopmentApi } from './case-api.ts';
 import { readDevelopmentDatabaseConfig } from './development-database.ts';
 import { createDevelopmentTextGenerator } from './gemini-client.ts';
-import { recoverStaleOriginalUploads } from './original-upload-recovery.ts';
+import {
+  reconcileAllOriginalReferencesForReviewer,
+  recoverStaleOriginalUploads,
+} from './original-upload-recovery.ts';
 import { startDocumentProcessingScheduler } from './processing-scheduler.ts';
 import { runNextDocumentProcessing } from './processing-worker.ts';
 import { generateValidatedClaims } from './source-grounded-generation.ts';
@@ -20,7 +23,7 @@ const CLAIM_GENERATION_TASK =
   'Extract only review claims explicitly supported by the supplied synthetic Social Security case record.';
 
 export async function startDevelopmentServer(environment: ServerEnvironment) {
-  readDevelopmentIdentity(environment);
+  const identity = readDevelopmentIdentity(environment);
   const configuredRoot = environment.DEVELOPMENT_ORIGINAL_STORAGE_ROOT;
   let originalStorage;
   if (configuredRoot !== undefined) {
@@ -54,6 +57,12 @@ export async function startDevelopmentServer(environment: ServerEnvironment) {
         root: originalStorage.root,
         olderThan: new Date(Date.now() - STALE_UPLOAD_AGE_MILLISECONDS),
         limit: UPLOAD_RECOVERY_LIMIT,
+      });
+    if (originalStorage)
+      await reconcileAllOriginalReferencesForReviewer({
+        database,
+        reviewerId: identity.reviewerId,
+        root: originalStorage.root,
       });
     await api.listen({ host: '127.0.0.1', port: 5176 });
     if (originalStorage) {
