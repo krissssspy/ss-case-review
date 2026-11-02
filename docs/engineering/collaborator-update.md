@@ -4,7 +4,7 @@ Date: November 2, 2026. Status: Phase 4 remains in progress. The application is 
 
 ## Latest increment
 
-Guarded synthetic startup now scans every registered original for the configured reviewer after stale upload recovery and before the API accepts requests. The scan distinguishes missing private files, integrity failures, and unexpected storage failures without inventing replacements or deleting case metadata. The full gate passes 378 fast tests, 10 native PostgreSQL tests, 9 Chromium workflows, 98.43% statement coverage, 97.15% branch coverage, and 100% mutation coverage across 4,360 mutants.
+Guarded synthetic startup and each scheduled recovery cycle now scan every registered original for the configured reviewer after stale upload recovery. The scan distinguishes missing private files, integrity failures, and unexpected storage failures without inventing replacements or deleting case metadata. The full gate passes 379 fast tests, 10 native PostgreSQL tests, 9 Chromium workflows, 98.43% statement coverage, 97.15% branch coverage, and 100% mutation coverage across 4,361 mutants.
 
 Production artifact aggregation now deduplicates repeated claim identities across document-processing records. The browser prefers a verified duplicate over an unverified result and preserves the first verified result when later duplicates conflict, preventing repeated or contradictory entries in the review tabs. The full gate passes 374 fast tests, 10 native PostgreSQL tests, 9 Chromium workflows, 98.40% statement coverage, 97.12% branch coverage, and 100% mutation coverage across 4,330 mutants.
 
