@@ -15,6 +15,7 @@ import {
   SyntheticCorrectionDesk,
   SyntheticRevisionHistory,
   SyntheticUploadRecovery,
+  deduplicateProcessingClaims,
   hasProcessingClaims,
   caseSectionSlug,
   sourceUnitIdFromHash,
@@ -685,6 +686,99 @@ test('shows only explicitly classified source-grounded claims in an artifact sec
     'href',
     '#source=00000000-0000-4000-8000-000000000031&start=0&end=4',
   );
+});
+
+test('deduplicates repeated claim identities across published processing records', async () => {
+  const caseId = '00000000-0000-4000-8000-000000000002';
+  const source = {
+    caseId,
+    recordRevision: 1,
+    documentVersionId: '00000000-0000-4000-8000-000000000021',
+    documentSha256: 'a'.repeat(64),
+    extractionVersion: 'pdfjs-native-v1',
+    sourceUnitId: '00000000-0000-4000-8000-000000000031',
+    start: 0,
+    end: 4,
+    quote: 'The ',
+  };
+  const claim = {
+    status: 'verified' as const,
+    claimId: 'repeated-medical-claim',
+    text: 'The MRI shows multilevel degenerative changes.',
+    section: 'medical' as const,
+    source,
+  };
+  const unverifiedClaim = {
+    status: 'unverified' as const,
+    claimId: claim.claimId,
+    text: 'The same MRI finding was not located.',
+    section: claim.section,
+    message:
+      "The review system couldn't find this evidence in the authorized case record." as const,
+    reason: 'source_mismatch' as const,
+  };
+  vi.mocked(listSyntheticDocumentProcessing).mockResolvedValueOnce([
+    {
+      documentVersionId: source.documentVersionId,
+      extractionVersion: source.extractionVersion,
+      state: 'published',
+      attemptCount: 1,
+      failureCode: null,
+      claims: { status: 'validated', claims: [unverifiedClaim] },
+    },
+    {
+      documentVersionId: '00000000-0000-4000-8000-000000000022',
+      extractionVersion: source.extractionVersion,
+      state: 'published',
+      attemptCount: 1,
+      failureCode: null,
+      claims: {
+        status: 'validated',
+        claims: [{ ...claim, text: 'The same MRI finding was returned again.' }],
+      },
+    },
+    {
+      documentVersionId: '00000000-0000-4000-8000-000000000023',
+      extractionVersion: source.extractionVersion,
+      state: 'published',
+      attemptCount: 1,
+      failureCode: null,
+      claims: {
+        status: 'validated',
+        claims: [{ ...unverifiedClaim, text: 'A late unverified duplicate appeared.' }],
+      },
+    },
+    {
+      documentVersionId: '00000000-0000-4000-8000-000000000024',
+      extractionVersion: source.extractionVersion,
+      state: 'published',
+      attemptCount: 1,
+      failureCode: null,
+      claims: {
+        status: 'validated',
+        claims: [{ ...claim, text: 'A late verified duplicate appeared.' }],
+      },
+    },
+  ]);
+
+  render(<SyntheticArtifactSection caseId={caseId} section="medical" />);
+  expect(await screen.findByText('The same MRI finding was returned again.')).toBeVisible();
+  expect(screen.queryByText('The same MRI finding was not located.')).not.toBeInTheDocument();
+  expect(screen.queryByText('A late unverified duplicate appeared.')).not.toBeInTheDocument();
+  expect(screen.queryByText('A late verified duplicate appeared.')).not.toBeInTheDocument();
+});
+
+test('keeps the first unverified claim when no verified duplicate exists', () => {
+  const first = {
+    status: 'unverified' as const,
+    claimId: 'unverified-duplicate',
+    text: 'First unverified result',
+    message:
+      "The review system couldn't find this evidence in the authorized case record." as const,
+    reason: 'source_mismatch' as const,
+  };
+  const second = { ...first, text: 'Second unverified result' };
+  expect(deduplicateProcessingClaims([first, second])).toEqual([first]);
 });
 
 test('renders structured medical chronology fields with a source link', async () => {

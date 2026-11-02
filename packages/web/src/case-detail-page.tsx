@@ -21,6 +21,7 @@ import {
   type SyntheticDocumentProcessing,
   type SyntheticOriginalReceipt,
   type SyntheticClaimFlag,
+  type SyntheticProcessingClaim,
   type SyntheticTextSource,
   type SyntheticTextSourceReference,
   type SyntheticRevisionEvent,
@@ -413,6 +414,18 @@ const ARTIFACT_SECTION_LABELS = {
   five_step: 'Five-step review and RFC',
 } as const;
 
+export function deduplicateProcessingClaims(
+  claims: readonly SyntheticProcessingClaim[],
+): SyntheticProcessingClaim[] {
+  const byClaimId = new Map<string, SyntheticProcessingClaim>();
+  for (const claim of claims) {
+    const existing = byClaimId.get(claim.claimId);
+    if (!existing || (existing.status === 'unverified' && claim.status === 'verified'))
+      byClaimId.set(claim.claimId, claim);
+  }
+  return [...byClaimId.values()];
+}
+
 export function SyntheticReferenceDesk() {
   return (
     <section className="panel reference-desk" aria-labelledby="reference-desk-heading">
@@ -498,14 +511,15 @@ export function SyntheticArtifactSection({
     load();
   }, [load]);
 
-  const claims =
+  const claims = deduplicateProcessingClaims(
     processing && processing !== 'unavailable'
       ? processing.flatMap((item) =>
           item.claims?.status === 'validated'
             ? item.claims.claims.filter((claim) => claim.section === section)
             : [],
         )
-      : /* Stryker disable next-line ArrayDeclaration -- the loading branch renders before this fallback can affect output. */ [];
+      : /* Stryker disable next-line ArrayDeclaration -- the loading branch renders before this fallback can affect output. */ [],
+  );
   const normalizedQuery = query.trim().toLocaleLowerCase();
   const filteredClaims = claims.filter((claim) =>
     claim.text.toLocaleLowerCase().includes(normalizedQuery),
