@@ -20,6 +20,7 @@ import {
   type SyntheticCorrectionSuggestion,
   type SyntheticDocumentProcessing,
   type SyntheticOriginalReceipt,
+  type SyntheticClaimFlag,
   type SyntheticTextSource,
   type SyntheticTextSourceReference,
   type SyntheticRevisionEvent,
@@ -53,6 +54,23 @@ const CORRECTION_ARTIFACT_LABELS = {
 } as const;
 const UNVERIFIED_CLAIM_INVESTIGATION_NOTE =
   'Investigate whether the citation reflects the complete record and whether the source context matches the impairment at issue.';
+const CLAIM_FLAG_LABELS: Record<SyntheticClaimFlag, string> = {
+  possible_cherry_pick:
+    'Investigate record context: the system flagged a possible selective citation.',
+  possible_specialist_mismatch:
+    'Investigate practitioner context: the system flagged a possible specialty mismatch.',
+};
+
+function ClaimInvestigationFlags({ flags }: { flags: readonly SyntheticClaimFlag[] | undefined }) {
+  if (!flags || flags.length === 0) return null;
+  return (
+    <ul className="claim-investigation-flags" aria-label="Investigation prompts">
+      {flags.map((flag) => (
+        <li key={flag}>{CLAIM_FLAG_LABELS[flag]}</li>
+      ))}
+    </ul>
+  );
+}
 
 function SyntheticClaims({
   claims,
@@ -75,6 +93,7 @@ function SyntheticClaims({
                     {claim.step ? ` · Step ${claim.step}` : ''}
                   </small>
                 ) : null}
+                <ClaimInvestigationFlags flags={claim.flags} />
                 <span>{claim.text}</span>{' '}
                 <small>
                   {claim.status === 'verified'
@@ -587,6 +606,7 @@ export function SyntheticArtifactSection({
                       {claim.speaker ? `${CLAIM_SPEAKER_LABELS[claim.speaker]}: ` : ''}
                       {claim.text}
                     </p>
+                    <ClaimInvestigationFlags flags={claim.flags} />
                     {claim.status === 'verified' ? (
                       <>
                         <p className="artifact-source-quote">
