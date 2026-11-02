@@ -6,6 +6,7 @@ import { createCase, registerOriginalReference } from '@record-review/case-repos
 import {
   findTextSourceForReviewer,
   listTextSourcesForReviewer,
+  insertTextSourceForReviewer,
 } from '@record-review/case-repository/source-units';
 import { writeOriginal } from '@record-review/record-storage/originals';
 import { expect, test, vi } from 'vitest';
@@ -158,6 +159,20 @@ test('publishes extracted PDF pages from verified original bytes and reports pag
       caseId,
       reviewerId,
     ]);
+    const priorSource = {
+      sourceUnitId: '00000000-0000-4000-8000-000000000039',
+      caseId,
+      documentVersionId,
+      recordRevision: 1,
+      documentSha256: reference.sha256,
+      extractionVersion: 'synthetic-native-v1',
+      pageNumber: 4,
+      rawText: 'Previously published case-record page',
+      geometry: { view: [], rotation: 0, items: [] },
+    };
+    expect(await insertTextSourceForReviewer(database, reviewerId, priorSource)).toEqual(
+      priorSource,
+    );
 
     await expect(
       processPdfOriginalForReviewer({
@@ -177,6 +192,7 @@ test('publishes extracted PDF pages from verified original bytes and reports pag
     expect(rejectedExtraction).toHaveBeenCalledOnce();
     expect(createSourceUnitId).toHaveBeenCalledTimes(2);
     expect(generateClaims).toHaveBeenCalledExactlyOnceWith(caseId, [
+      priorSource,
       expect.objectContaining({ sourceUnitId: sourceIds[0], rawText: 'First exact page' }),
       expect.objectContaining({ sourceUnitId: sourceIds[1], rawText: 'Third exact page' }),
     ]);
@@ -203,6 +219,16 @@ test('publishes extracted PDF pages from verified original bytes and reports pag
         documentSha256: reference.sha256,
         extractionVersion: 'synthetic-native-v1',
         pageNumber: 3,
+        geometry: { view: [], rotation: 0, items: [] },
+      },
+      {
+        sourceUnitId: priorSource.sourceUnitId,
+        caseId,
+        documentVersionId,
+        recordRevision: 1,
+        documentSha256: reference.sha256,
+        extractionVersion: 'synthetic-native-v1',
+        pageNumber: 4,
         geometry: { view: [], rotation: 0, items: [] },
       },
     ]);

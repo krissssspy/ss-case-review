@@ -5,6 +5,7 @@ import {
 } from '@record-review/case-repository/cases';
 import {
   insertTextSourcesForReviewer,
+  listTextSourceUnitsForReviewer,
   type TextSourceGeometry,
   type TextSourceUnit,
 } from '@record-review/case-repository/source-units';
@@ -82,7 +83,12 @@ export async function processPdfOriginalForReviewer(input: ProcessingInput) {
       geometry: page.geometry ?? { view: [], rotation: 0, items: [] },
     }));
   const claims = input.generateClaims
-    ? await input.generateClaims(input.caseId, sources)
+    ? await input.generateClaims(
+        input.caseId,
+        (
+          await listTextSourceUnitsForReviewer(input.database, input.reviewerId, input.caseId)
+        ).concat(sources),
+      )
     : undefined;
   const published = await insertTextSourcesForReviewer(input.database, input.reviewerId, sources);
   if (published.length !== sources.length) return { status: 'publication_rejected' as const };
