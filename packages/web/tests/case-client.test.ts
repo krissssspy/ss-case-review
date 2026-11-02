@@ -427,6 +427,54 @@ test('loads and validates one document processing status without trusting malfor
   expect(fetch).toHaveBeenCalledTimes(validStatuses.length + 2 + invalidPayloads.length);
 });
 
+test('rejects unsupported chronology importance from processing responses', async () => {
+  const caseId = '00000000-0000-4000-8000-000000000002';
+  const documentVersionId = '00000000-0000-4000-8000-000000000021';
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        processing: {
+          documentVersionId,
+          extractionVersion: 'pdfjs-native-v1',
+          state: 'published',
+          attemptCount: 1,
+          failureCode: null,
+          claims: {
+            status: 'validated',
+            claims: [
+              {
+                status: 'verified',
+                claimId: 'chronology-importance',
+                text: 'The Appeals Council denied review.',
+                section: 'procedural',
+                chronology: { date: '2024-03-12', importance: 'urgent' },
+                source: {
+                  caseId,
+                  recordRevision: 1,
+                  documentVersionId,
+                  documentSha256: 'a'.repeat(64),
+                  extractionVersion: 'pdfjs-native-v1',
+                  sourceUnitId: '00000000-0000-4000-8000-000000000031',
+                  start: 0,
+                  end: 4,
+                  quote: 'The ',
+                },
+              },
+            ],
+          },
+        },
+      }),
+    }),
+  );
+
+  await expect(getSyntheticDocumentProcessing(caseId, documentVersionId)).rejects.toThrow(
+    'document_processing_unavailable',
+  );
+});
+
 test('loads and validates processing records for a case', async () => {
   const caseId = '00000000-0000-4000-8000-000000000002';
   const processing = {

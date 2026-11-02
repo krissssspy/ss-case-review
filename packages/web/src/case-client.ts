@@ -74,6 +74,7 @@ export type SyntheticClaimChronology = Readonly<{
   reason?: string;
   prescription?: string;
   name?: string;
+  importance?: 'important';
 }>;
 
 export type SyntheticClaimsResult =
@@ -248,6 +249,7 @@ function isSyntheticClaimChronology(value: unknown): value is SyntheticClaimChro
   if (typeof value !== 'object' || value === null) return false;
   const chronology = value as SyntheticClaimChronology;
   if (typeof chronology.date !== 'string' || chronology.date.trim().length === 0) return false;
+  if (chronology.importance !== undefined && chronology.importance !== 'important') return false;
   return ['provider', 'reason', 'prescription', 'name'].every(
     (key) =>
       chronology[key as keyof SyntheticClaimChronology] === undefined ||
