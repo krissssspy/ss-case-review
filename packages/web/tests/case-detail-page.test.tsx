@@ -947,6 +947,48 @@ test('renders procedural chronology names and safe fallback values', async () =>
   expect(screen.getAllByRole('cell', { name: 'Investigate' })).toHaveLength(2);
 });
 
+test('groups five-step claims by their validated evaluation step', async () => {
+  const caseId = '00000000-0000-4000-8000-000000000002';
+  vi.mocked(listSyntheticDocumentProcessing).mockResolvedValueOnce([
+    {
+      documentVersionId: '00000000-0000-4000-8000-000000000021',
+      extractionVersion: 'pdfjs-native-v1',
+      state: 'published',
+      attemptCount: 1,
+      failureCode: null,
+      claims: {
+        status: 'validated',
+        claims: [
+          {
+            status: 'unverified',
+            claimId: 'five-step-one',
+            text: 'Step one evidence needs investigation.',
+            section: 'five_step',
+            step: 1,
+            message: "The review system couldn't find this evidence in the authorized case record.",
+            reason: 'quote_mismatch',
+          },
+          {
+            status: 'unverified',
+            claimId: 'five-step-three',
+            text: 'Step three evidence needs investigation.',
+            section: 'five_step',
+            step: 3,
+            message: "The review system couldn't find this evidence in the authorized case record.",
+            reason: 'quote_mismatch',
+          },
+        ],
+      },
+    },
+  ]);
+
+  render(<SyntheticArtifactSection caseId={caseId} section="five_step" />);
+  expect(await screen.findByRole('heading', { name: 'Step 1' })).toBeVisible();
+  expect(screen.getByRole('heading', { name: 'Step 3' })).toBeVisible();
+  expect(screen.getByText('Step one evidence needs investigation.')).toBeVisible();
+  expect(screen.getByText('Step three evidence needs investigation.')).toBeVisible();
+});
+
 test('filters classified artifact entries with a case-insensitive search', async () => {
   const caseId = '00000000-0000-4000-8000-000000000002';
   vi.mocked(listSyntheticDocumentProcessing).mockResolvedValueOnce([

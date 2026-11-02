@@ -530,6 +530,33 @@ export function SyntheticArtifactSection({
       (verificationFilter === 'all' || claim.status === verificationFilter),
   );
   const heading = ARTIFACT_SECTION_LABELS[section];
+  const renderClaim = (claim: SyntheticProcessingClaim) => (
+    <li key={claim.claimId}>
+      <p>
+        {claim.speaker ? `${CLAIM_SPEAKER_LABELS[claim.speaker]}: ` : ''}
+        {claim.text}
+      </p>
+      <ClaimInvestigationFlags flags={claim.flags} />
+      {claim.status === 'verified' ? (
+        <>
+          <p className="artifact-source-quote">
+            <span>Record quotation:</span> <q>{claim.source.quote}</q>
+          </p>
+          <a
+            className="source-link"
+            href={`#source=${claim.source.sourceUnitId}&start=${claim.source.start}&end=${claim.source.end}`}
+          >
+            Open cited source
+          </a>
+        </>
+      ) : (
+        <>
+          <small>{claim.message}</small>
+          <small className="claim-investigation-note">{UNVERIFIED_CLAIM_INVESTIGATION_NOTE}</small>
+        </>
+      )}
+    </li>
+  );
   return (
     <section className="panel artifact-section" aria-live="polite">
       <h2>{heading}</h2>
@@ -642,37 +669,31 @@ export function SyntheticArtifactSection({
                   </table>
                 </div>
               ) : null}
-              <ul className="artifact-claim-list">
-                {filteredClaims.map((claim) => (
-                  <li key={claim.claimId}>
-                    <p>
-                      {claim.speaker ? `${CLAIM_SPEAKER_LABELS[claim.speaker]}: ` : ''}
-                      {claim.text}
-                    </p>
-                    <ClaimInvestigationFlags flags={claim.flags} />
-                    {claim.status === 'verified' ? (
-                      <>
-                        <p className="artifact-source-quote">
-                          <span>Record quotation:</span> <q>{claim.source.quote}</q>
-                        </p>
-                        <a
-                          className="source-link"
-                          href={`#source=${claim.source.sourceUnitId}&start=${claim.source.start}&end=${claim.source.end}`}
-                        >
-                          Open cited source
-                        </a>
-                      </>
-                    ) : (
-                      <>
-                        <small>{claim.message}</small>
-                        <small className="claim-investigation-note">
-                          {UNVERIFIED_CLAIM_INVESTIGATION_NOTE}
-                        </small>
-                      </>
-                    )}
-                  </li>
-                ))}
-              </ul>
+              {section === 'five_step' ? (
+                <div className="five-step-groups">
+                  {[1, 2, 3, 4, 5].map((step) => {
+                    const stepClaims = filteredClaims.filter((claim) => claim.step === step);
+                    return stepClaims.length > 0 ? (
+                      <section key={step} aria-labelledby={`five-step-${step}`}>
+                        <h3 id={`five-step-${step}`}>Step {step}</h3>
+                        <ul className="artifact-claim-list">{stepClaims.map(renderClaim)}</ul>
+                      </section>
+                    ) : null;
+                  })}
+                  {filteredClaims.some((claim) => claim.step === undefined) ? (
+                    <section aria-labelledby="five-step-unassigned">
+                      <h3 id="five-step-unassigned">Unassigned step</h3>
+                      <ul className="artifact-claim-list">
+                        {filteredClaims
+                          .filter((claim) => claim.step === undefined)
+                          .map(renderClaim)}
+                      </ul>
+                    </section>
+                  ) : null}
+                </div>
+              ) : (
+                <ul className="artifact-claim-list">{filteredClaims.map(renderClaim)}</ul>
+              )}
             </>
           )}
         </>
