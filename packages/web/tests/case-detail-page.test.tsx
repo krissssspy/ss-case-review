@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
-import { act, cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen, within } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { Link, MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
@@ -705,6 +705,7 @@ test('renders structured medical chronology fields with a source link', async ()
             claimId: 'medical-chronology',
             text: 'The claimant attended a follow-up visit.',
             section: 'medical',
+            flags: ['possible_specialist_mismatch'],
             chronology: {
               date: '2024-03-12',
               provider: 'Dr. Rivera',
@@ -751,6 +752,11 @@ test('renders structured medical chronology fields with a source link', async ()
   expect(screen.getAllByRole('row')).toHaveLength(3);
   expect(screen.getByRole('cell', { name: '2024-03-12' })).toBeVisible();
   expect(screen.getByRole('cell', { name: 'Dr. Rivera' })).toBeVisible();
+  expect(
+    within(screen.getByRole('table')).getByText(
+      'Investigate practitioner context: the system flagged a possible specialty mismatch.',
+    ),
+  ).toBeVisible();
   expect(screen.getAllByRole('cell', { name: 'Not provided' })).toHaveLength(3);
   expect(screen.getAllByRole('link', { name: 'Open record' })[0]).toHaveAttribute(
     'href',

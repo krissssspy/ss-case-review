@@ -580,7 +580,10 @@ export function SyntheticArtifactSection({
                                 <td>{claim.chronology?.prescription ?? 'Not provided'}</td>
                               </>
                             )}
-                            <td>{claim.text}</td>
+                            <td>
+                              {claim.text}
+                              <ClaimInvestigationFlags flags={claim.flags} />
+                            </td>
                             <td>
                               {claim.status === 'verified' ? (
                                 <a
