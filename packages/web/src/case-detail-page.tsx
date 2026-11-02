@@ -569,7 +569,14 @@ export function SyntheticArtifactSection({
                       {filteredClaims
                         .filter((claim) => claim.chronology)
                         .map((claim) => (
-                          <tr key={`chronology-${claim.claimId}`}>
+                          <tr
+                            key={`chronology-${claim.claimId}`}
+                            className={
+                              claim.chronology?.importance === 'important'
+                                ? 'chronology-important'
+                                : undefined
+                            }
+                          >
                             <td>{claim.chronology?.date}</td>
                             {section === 'procedural' ? (
                               <td>{claim.chronology?.name ?? 'Not provided'}</td>

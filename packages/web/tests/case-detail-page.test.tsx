@@ -711,6 +711,7 @@ test('renders structured medical chronology fields with a source link', async ()
               provider: 'Dr. Rivera',
               reason: 'Follow-up evaluation',
               prescription: 'Continue physical therapy',
+              importance: 'important',
             },
             source: {
               caseId,
@@ -751,6 +752,9 @@ test('renders structured medical chronology fields with a source link', async ()
   expect(await screen.findByRole('table')).toBeVisible();
   expect(screen.getAllByRole('row')).toHaveLength(3);
   expect(screen.getByRole('cell', { name: '2024-03-12' })).toBeVisible();
+  expect(screen.getByRole('cell', { name: '2024-03-12' }).closest('tr')).toHaveClass(
+    'chronology-important',
+  );
   expect(screen.getByRole('cell', { name: 'Dr. Rivera' })).toBeVisible();
   expect(
     within(screen.getByRole('table')).getByText(

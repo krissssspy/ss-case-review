@@ -311,6 +311,11 @@ main:focus {
   background: var(--surface);
 }
 
+.chronology-important {
+  background: var(--action-tint);
+  font-weight: 600;
+}
+
 .revision-history ol {
   display: grid;
   gap: 8px;
