@@ -1,10 +1,10 @@
 # Phase 4 collaborator update
 
-Date: November 2, 2026. Status: Phase 4 remains in progress. The application is not ready for court testing or real records.
+Date: November 3, 2026. Status: Phase 4 remains in progress. The application is not ready for court testing or real records.
 
 ## Latest increment
 
-The DOCX-processing increment adds bounded Mammoth text extraction as a single source page and routes stored originals through DOCX or verified PDF processing based on persisted metadata. The fallback keeps exact bytes, source provenance, member authorization, and safe extraction failures. The full gate passes 388 fast tests, 10 native PostgreSQL tests, 9 Chromium workflows, 98.40% statement coverage, 97.14% branch coverage, and 100% mutation coverage across 4,497 mutants. Phase 4 remains in progress: XLSX/TIFF/OCR, complete artifact construction, and court deployment qualification remain pending.
+The XLSX-processing increment adds bounded workbook-sheet extraction as source pages and routes stored originals through XLSX, DOCX, or verified PDF processing based on persisted metadata. The implementation preserves exact bytes, source provenance, member authorization, page and byte budgets, and safe extraction failures. The full gate passes 402 fast tests, 10 native PostgreSQL tests, 9 Chromium workflows, 98.46% statement coverage, 97.25% branch coverage, and 100% mutation coverage across 4,670 mutants. Phase 4 remains in progress: TIFF/OCR, complete artifact construction, and court deployment qualification remain pending.
 
 Every artifact section now supports speaker filtering for ALJ, Plaintiff, Commissioner, and vocational-expert arguments alongside verification filtering and case-insensitive search. The filter preserves source quotations, investigation-safe wording, and record links. The full gate passes 383 fast tests, 10 native PostgreSQL tests, 9 Chromium workflows, 98.38% statement coverage, 97.10% branch coverage, and 100% mutation coverage across 4,437 mutants.
 
