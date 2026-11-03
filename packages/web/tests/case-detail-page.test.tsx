@@ -1129,6 +1129,51 @@ test('filters classified artifact entries by verification status', async () => {
   expect(screen.queryByText('The claimant completed physical therapy.')).not.toBeInTheDocument();
 });
 
+test('filters classified artifact entries by validated speaker', async () => {
+  const caseId = '00000000-0000-4000-8000-000000000002';
+  vi.mocked(listSyntheticDocumentProcessing).mockResolvedValueOnce([
+    {
+      documentVersionId: '00000000-0000-4000-8000-000000000021',
+      extractionVersion: 'pdfjs-native-v1',
+      state: 'published',
+      attemptCount: 1,
+      failureCode: null,
+      claims: {
+        status: 'validated',
+        claims: [
+          {
+            status: 'unverified',
+            claimId: 'medical-alj',
+            text: 'The ALJ medical argument needs investigation.',
+            section: 'medical',
+            speaker: 'alj',
+            message: "The review system couldn't find this evidence in the authorized case record.",
+            reason: 'quote_mismatch',
+          },
+          {
+            status: 'unverified',
+            claimId: 'medical-plaintiff',
+            text: 'The plaintiff medical argument needs investigation.',
+            section: 'medical',
+            speaker: 'plaintiff',
+            message: "The review system couldn't find this evidence in the authorized case record.",
+            reason: 'quote_mismatch',
+          },
+        ],
+      },
+    },
+  ]);
+  const user = userEvent.setup();
+  render(<SyntheticArtifactSection caseId={caseId} section="medical" />);
+  expect(await screen.findByText(/The ALJ medical argument needs investigation/)).toBeVisible();
+  expect(screen.getByText(/The plaintiff medical argument needs investigation/)).toBeVisible();
+  await user.selectOptions(screen.getByLabelText('Filter speaker in medical chronology'), 'alj');
+  expect(screen.getByText(/The ALJ medical argument needs investigation/)).toBeVisible();
+  expect(
+    screen.queryByText(/The plaintiff medical argument needs investigation/),
+  ).not.toBeInTheDocument();
+});
+
 test('reports and retries an unavailable artifact section', async () => {
   const caseId = '00000000-0000-4000-8000-000000000002';
   vi.mocked(listSyntheticDocumentProcessing).mockRejectedValueOnce(new Error('offline'));

@@ -504,6 +504,9 @@ export function SyntheticArtifactSection({
   const [verificationFilter, setVerificationFilter] = useState<'all' | 'verified' | 'unverified'>(
     'all',
   );
+  const [speakerFilter, setSpeakerFilter] = useState<
+    'all' | 'alj' | 'plaintiff' | 'commissioner' | 'vocational_expert'
+  >('all');
   const load = useCallback(() => {
     setProcessing(undefined);
     void listSyntheticDocumentProcessing(caseId).then(setProcessing, () =>
@@ -527,7 +530,8 @@ export function SyntheticArtifactSection({
   const filteredClaims = claims.filter(
     (claim) =>
       claim.text.toLocaleLowerCase().includes(normalizedQuery) &&
-      (verificationFilter === 'all' || claim.status === verificationFilter),
+      (verificationFilter === 'all' || claim.status === verificationFilter) &&
+      (speakerFilter === 'all' || claim.speaker === speakerFilter),
   );
   const heading = ARTIFACT_SECTION_LABELS[section];
   const renderClaim = (claim: SyntheticProcessingClaim) => (
@@ -599,6 +603,25 @@ export function SyntheticArtifactSection({
             <option value="all">All entries</option>
             <option value="verified">Evidence located</option>
             <option value="unverified">Needs investigation</option>
+          </select>
+          <label className="source-quote-label" htmlFor="artifact-speaker-filter">
+            Filter speaker in {heading.toLocaleLowerCase()}
+          </label>
+          <select
+            id="artifact-speaker-filter"
+            value={speakerFilter}
+            onChange={(event) =>
+              setSpeakerFilter(
+                event.target.value as
+                  'all' | 'alj' | 'plaintiff' | 'commissioner' | 'vocational_expert',
+              )
+            }
+          >
+            <option value="all">All speakers</option>
+            <option value="alj">ALJ</option>
+            <option value="plaintiff">Plaintiff</option>
+            <option value="commissioner">Commissioner</option>
+            <option value="vocational_expert">Vocational expert</option>
           </select>
           {filteredClaims.length === 0 ? (
             <p>No classified entries match this search.</p>
