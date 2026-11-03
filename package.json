@@ -38,7 +38,7 @@
     "check:secrets": "secretlint '**/*'",
     "check:repository": "node scripts/check-repository.ts",
     "check:dependencies": "node --input-type=module --eval \"import { runDependencyAudit } from './scripts/check-dependency-audit.ts'; runDependencyAudit();\"",
-    "check:licenses": "license-checker-rseidelsohn --excludePrivatePackages --onlyAllow 'MIT;MIT-0;ISC;Apache-2.0;BSD-2-Clause;BSD-3-Clause;0BSD;CC0-1.0;CC-BY-4.0;CC-BY-3.0;Unlicense;BlueOak-1.0.0;Python-2.0;PSF-2.0;MPL-2.0;Artistic-2.0;WTFPL' --summary",
+    "check:licenses": "license-checker-rseidelsohn --excludePrivatePackages --onlyAllow 'MIT;MIT-0;ISC;Apache-2.0;BSD;BSD-2-Clause;BSD-3-Clause;0BSD;CC0-1.0;CC-BY-4.0;CC-BY-3.0;Unlicense;BlueOak-1.0.0;Python-2.0;PSF-2.0;MPL-2.0;Artistic-2.0;WTFPL' --summary",
     "verify:commit": "npm run check:repository && npm run format:check && npm run lint && npm run typecheck && npm run test:coverage && npm run test:mutation && npm run build && npm run test:browser && npm run test:postgres && npm run check:secrets && npm run check:dependencies && npm run check:licenses"
   },
   "devDependencies": {

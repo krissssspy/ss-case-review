@@ -4,9 +4,11 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./docx": "./src/docx.ts",
     "./pdf": "./src/pdf.ts"
   },
   "dependencies": {
+    "mammoth": "1.13.0",
     "pdfjs-dist": "6.3.289"
   }
 }
