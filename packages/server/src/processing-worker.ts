@@ -6,7 +6,7 @@ import {
   failDocumentProcessing,
   type DocumentProcessingFailureCode,
 } from '@record-review/case-repository/document-processing-attempts';
-import { processStoredPdfOriginalForReviewer } from './original-processing.ts';
+import { processStoredOriginalForReviewer } from './original-processing.ts';
 import type { ValidatedClaimsResult } from './source-grounded-generation.ts';
 
 export type ClaimGenerator = (
@@ -77,7 +77,7 @@ export async function runNextDocumentProcessing(input: WorkerInput) {
 
   let outcome: WorkerOutcome;
   try {
-    const result = await (input.processOriginal ?? processStoredPdfOriginalForReviewer)({
+    const result = await (input.processOriginal ?? processStoredOriginalForReviewer)({
       database: input.database,
       reviewerId: claim.reviewerId,
       caseId: claim.caseId,

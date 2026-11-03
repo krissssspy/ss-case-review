@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PGlite } from '@electric-sql/pglite';
 import { createCase, registerOriginalReference } from '@record-review/case-repository/cases';
+import { registerOriginalDocumentMetadata } from '@record-review/case-repository/original-document-metadata';
 import {
   findTextSourceForReviewer,
   listTextSourcesForReviewer,
@@ -12,7 +13,7 @@ import { writeOriginal } from '@record-review/record-storage/originals';
 import { expect, test, vi } from 'vitest';
 import {
   processPdfOriginalForReviewer,
-  processStoredPdfOriginalForReviewer,
+  processStoredOriginalForReviewer,
 } from '../src/original-processing.ts';
 
 function syntheticPdf(contents: readonly string[]): Uint8Array {
@@ -70,6 +71,7 @@ test('publishes extracted PDF pages from verified original bytes and reports pag
       '202609230001_initial_case_metadata.sql',
       '202609280001_text_source_units.sql',
       '202610190001_text_source_geometry.sql',
+      '202611010001_original_document_metadata.sql',
     ]) {
       const sql = await readFile(
         new URL(`../../case-repository/migrations/${migration}`, import.meta.url),
@@ -257,6 +259,7 @@ test('processes a verified stored PDF through the bounded concrete adapter', asy
       '202609230001_initial_case_metadata.sql',
       '202609280001_text_source_units.sql',
       '202610190001_text_source_geometry.sql',
+      '202611010001_original_document_metadata.sql',
     ]) {
       const sql = await readFile(
         new URL(`../../case-repository/migrations/${migration}`, import.meta.url),
@@ -273,7 +276,7 @@ test('processes a verified stored PDF through the bounded concrete adapter', asy
       .mockReturnValueOnce(sourceIds[1] as string);
 
     await expect(
-      processStoredPdfOriginalForReviewer({
+      processStoredOriginalForReviewer({
         database,
         reviewerId,
         caseId,
@@ -325,6 +328,150 @@ test('processes a verified stored PDF through the bounded concrete adapter', asy
         geometry: { view: [], rotation: 0, items: expect.any(Array) },
       },
     ]);
+  } finally {
+    await database.close();
+    await rm(root, { recursive: true, force: true });
+  }
+}, 15_000);
+
+test('processes a stored DOCX through metadata-selected extraction', async () => {
+  const database = await PGlite.create();
+  const root = await mkdtemp(join(tmpdir(), 'record-review-docx-processing-test-'));
+  const caseId = '00000000-0000-4000-8000-000000000201';
+  const reviewerId = '00000000-0000-4000-8000-000000000211';
+  const documentVersionId = '00000000-0000-4000-8000-000000000221';
+  const exactMediaDocumentVersionId = '00000000-0000-4000-8000-000000000222';
+  const pdfDocumentVersionId = '00000000-0000-4000-8000-000000000223';
+  const sourceUnitId = '00000000-0000-4000-8000-000000000231';
+  const exactMediaSourceUnitId = '00000000-0000-4000-8000-000000000232';
+  const pdfSourceUnitId = '00000000-0000-4000-8000-000000000233';
+  const bytes = new TextEncoder().encode('PK synthetic DOCX bytes');
+  try {
+    for (const migration of [
+      '202609230001_initial_case_metadata.sql',
+      '202609280001_text_source_units.sql',
+      '202610190001_text_source_geometry.sql',
+      '202611010001_original_document_metadata.sql',
+    ]) {
+      const sql = await readFile(
+        new URL(`../../case-repository/migrations/${migration}`, import.meta.url),
+        'utf8',
+      );
+      await database.exec(sql.replace(/-- Down Migration[\s\S]*$/, ''));
+    }
+    await createCase(database, { caseId, reviewerId, label: 'DOCX processing case' });
+    const reference = await writeOriginal(root, { caseId, documentVersionId }, bytes);
+    await registerOriginalReference(database, reviewerId, reference);
+    await registerOriginalDocumentMetadata(database, reviewerId, {
+      caseId,
+      documentVersionId,
+      fileName: '2-alj-decision.docx',
+      mediaType: 'application/octet-stream',
+    });
+    const extractDocxPages = vi.fn(async (received: Uint8Array, maximumPages: number) => {
+      expect([...received]).toEqual([...bytes]);
+      expect(maximumPages).toBe(4);
+      return [{ status: 'extracted' as const, pageNumber: 1, rawText: 'DOCX decision text' }];
+    });
+
+    await expect(
+      processStoredOriginalForReviewer({
+        database,
+        reviewerId,
+        caseId,
+        documentVersionId,
+        root,
+        maximumBytes: bytes.byteLength,
+        maximumPages: 4,
+        extractionVersion: 'docx-native-v1',
+        createSourceUnitId: () => sourceUnitId,
+        extractDocxPages,
+      }),
+    ).resolves.toEqual({ status: 'published', sourceUnitIds: [sourceUnitId], gaps: [] });
+    expect(extractDocxPages).toHaveBeenCalledOnce();
+    await expect(listTextSourcesForReviewer(database, reviewerId, caseId)).resolves.toMatchObject([
+      {
+        sourceUnitId,
+        documentVersionId,
+        pageNumber: 1,
+      },
+    ]);
+    await expect(
+      findTextSourceForReviewer(database, reviewerId, caseId, sourceUnitId),
+    ).resolves.toMatchObject({ rawText: 'DOCX decision text' });
+    const exactMediaReference = await writeOriginal(
+      root,
+      { caseId, documentVersionId: exactMediaDocumentVersionId },
+      bytes,
+    );
+    await registerOriginalReference(database, reviewerId, exactMediaReference);
+    await registerOriginalDocumentMetadata(database, reviewerId, {
+      caseId,
+      documentVersionId: exactMediaDocumentVersionId,
+      fileName: '2-alj-decision.bin',
+      mediaType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    });
+    const exactMediaExtract = vi.fn(async () => [
+      { status: 'extracted' as const, pageNumber: 1, rawText: 'Exact media DOCX text' },
+    ]);
+    await expect(
+      processStoredOriginalForReviewer({
+        database,
+        reviewerId,
+        caseId,
+        documentVersionId: exactMediaDocumentVersionId,
+        root,
+        maximumBytes: bytes.byteLength,
+        maximumPages: 4,
+        extractionVersion: 'docx-native-v1',
+        createSourceUnitId: () => exactMediaSourceUnitId,
+        extractDocxPages: exactMediaExtract,
+      }),
+    ).resolves.toEqual({
+      status: 'published',
+      sourceUnitIds: [exactMediaSourceUnitId],
+      gaps: [],
+    });
+    expect(exactMediaExtract).toHaveBeenCalledOnce();
+    const pdfBytes = syntheticPdf(['BT /F1 12 Tf 72 720 Td (PDF fallback) Tj ET']);
+    const pdfReference = await writeOriginal(
+      root,
+      { caseId, documentVersionId: pdfDocumentVersionId },
+      pdfBytes,
+    );
+    await registerOriginalReference(database, reviewerId, pdfReference);
+    await registerOriginalDocumentMetadata(database, reviewerId, {
+      caseId,
+      documentVersionId: pdfDocumentVersionId,
+      fileName: '2-alj-decision.pdf',
+      mediaType: 'application/octet-stream',
+    });
+    await expect(
+      processStoredOriginalForReviewer({
+        database,
+        reviewerId,
+        caseId,
+        documentVersionId: pdfDocumentVersionId,
+        root,
+        maximumBytes: pdfBytes.byteLength,
+        maximumPages: 1,
+        extractionVersion: 'pdfjs-native-v1',
+        createSourceUnitId: () => pdfSourceUnitId,
+      }),
+    ).resolves.toEqual({ status: 'published', sourceUnitIds: [pdfSourceUnitId], gaps: [] });
+    await expect(
+      processStoredOriginalForReviewer({
+        database,
+        reviewerId,
+        caseId,
+        documentVersionId,
+        root,
+        maximumBytes: bytes.byteLength,
+        maximumPages: 4,
+        extractionVersion: 'docx-native-v1',
+        createSourceUnitId: () => sourceUnitId,
+      }),
+    ).rejects.toThrow('docx_extraction_failed');
   } finally {
     await database.close();
     await rm(root, { recursive: true, force: true });

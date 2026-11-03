@@ -24,6 +24,7 @@ beforeEach(async () => {
     '202609230001_initial_case_metadata.sql',
     '202610010001_document_processing_attempts.sql',
     '202610150001_processing_claims.sql',
+    '202611010001_original_document_metadata.sql',
   ]) {
     const sql = await readFile(
       new URL(`../../case-repository/migrations/${migration}`, import.meta.url),

@@ -9,6 +9,8 @@ import {
   type TextSourceGeometry,
   type TextSourceUnit,
 } from '@record-review/case-repository/source-units';
+import { findOriginalDocumentMetadata } from '@record-review/case-repository/original-document-metadata';
+import { extractDocxBytes } from '@record-review/document-processing/docx';
 import { extractPdfBytes } from '@record-review/document-processing/pdf';
 import { detectDocumentSignature } from '@record-review/record-domain/document-signature';
 import { readOriginal } from '@record-review/record-storage/originals';
@@ -35,6 +37,7 @@ type ProcessingInput = Readonly<{
   maximumBytes: number;
   maximumPages: number;
   extractionVersion: string;
+  format?: 'pdf';
   extractPages: (
     bytes: Uint8Array,
     maximumPages: number,
@@ -46,7 +49,10 @@ type ProcessingInput = Readonly<{
   ) => Promise<ValidatedClaimsResult>;
 }>;
 
-type StoredProcessingInput = Omit<ProcessingInput, 'extractPages'>;
+type StoredProcessingInput = Omit<ProcessingInput, 'extractPages' | 'format'> &
+  Readonly<{
+    extractDocxPages?: ProcessingInput['extractPages'];
+  }>;
 
 export function processStoredPdfOriginalForReviewer(input: StoredProcessingInput) {
   return processPdfOriginalForReviewer({
@@ -55,7 +61,31 @@ export function processStoredPdfOriginalForReviewer(input: StoredProcessingInput
   });
 }
 
+export async function processStoredOriginalForReviewer(input: StoredProcessingInput) {
+  const metadata = await findOriginalDocumentMetadata(
+    input.database,
+    input.reviewerId,
+    input.caseId,
+    input.documentVersionId,
+  );
+  const isDocx =
+    metadata?.mediaType.toLowerCase() ===
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+    metadata?.fileName.toLowerCase().endsWith('.docx');
+  if (!isDocx) return processStoredPdfOriginalForReviewer(input);
+  return processOriginalForReviewer({
+    ...input,
+    extractPages:
+      input.extractDocxPages ??
+      ((bytes, maximumPages) => extractDocxBytes(bytes, input.maximumBytes, maximumPages)),
+  });
+}
+
 export async function processPdfOriginalForReviewer(input: ProcessingInput) {
+  return processOriginalForReviewer({ ...input, format: 'pdf' });
+}
+
+async function processOriginalForReviewer(input: ProcessingInput) {
   const record = await findCaseForReviewer(input.database, input.reviewerId, input.caseId);
   if (!record) return { status: 'original_unavailable' as const };
   const reference = await findOriginalReference(
@@ -67,7 +97,8 @@ export async function processPdfOriginalForReviewer(input: ProcessingInput) {
   if (!reference) return { status: 'original_unavailable' as const };
   if (reference.byteLength > input.maximumBytes) throw new Error('original_byte_budget_exceeded');
   const bytes = (await readOriginal(input.root, input.caseId, reference)) as Buffer;
-  if (detectDocumentSignature(bytes) !== 'pdf') throw new Error('unsupported_document_format');
+  if (input.format === 'pdf' && detectDocumentSignature(bytes) !== 'pdf')
+    throw new Error('unsupported_document_format');
   const pages = await input.extractPages(bytes, input.maximumPages);
   const sources: TextSourceUnit[] = pages
     .filter((page): page is ExtractedPage => page.status === 'extracted')
