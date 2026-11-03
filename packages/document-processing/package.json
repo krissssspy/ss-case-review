@@ -5,9 +5,11 @@
   "type": "module",
   "exports": {
     "./docx": "./src/docx.ts",
-    "./pdf": "./src/pdf.ts"
+    "./pdf": "./src/pdf.ts",
+    "./xlsx": "./src/xlsx.ts"
   },
   "dependencies": {
+    "jszip": "3.10.2",
     "mammoth": "1.13.0",
     "pdfjs-dist": "6.3.289"
   }

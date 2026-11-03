@@ -477,3 +477,105 @@ test('processes a stored DOCX through metadata-selected extraction', async () =>
     await rm(root, { recursive: true, force: true });
   }
 }, 15_000);
+
+test('processes a stored XLSX through metadata-selected extraction', async () => {
+  const database = await PGlite.create();
+  const root = await mkdtemp(join(tmpdir(), 'record-review-xlsx-processing-test-'));
+  const caseId = '00000000-0000-4000-8000-000000000401';
+  const reviewerId = '00000000-0000-4000-8000-000000000411';
+  const documentVersionId = '00000000-0000-4000-8000-000000000421';
+  const suffixDocumentVersionId = '00000000-0000-4000-8000-000000000422';
+  const sourceUnitId = '00000000-0000-4000-8000-000000000431';
+  const suffixSourceUnitId = '00000000-0000-4000-8000-000000000432';
+  const bytes = new TextEncoder().encode('PK synthetic XLSX bytes');
+  try {
+    for (const migration of [
+      '202609230001_initial_case_metadata.sql',
+      '202609280001_text_source_units.sql',
+      '202610190001_text_source_geometry.sql',
+      '202611010001_original_document_metadata.sql',
+    ]) {
+      const sql = await readFile(
+        new URL(`../../case-repository/migrations/${migration}`, import.meta.url),
+        'utf8',
+      );
+      await database.exec(sql.replace(/-- Down Migration[\s\S]*$/, ''));
+    }
+    await createCase(database, { caseId, reviewerId, label: 'XLSX processing case' });
+    const reference = await writeOriginal(root, { caseId, documentVersionId }, bytes);
+    await registerOriginalReference(database, reviewerId, reference);
+    await registerOriginalDocumentMetadata(database, reviewerId, {
+      caseId,
+      documentVersionId,
+      fileName: '5-earnings.bin',
+      mediaType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    const extractXlsxPages = vi.fn(async () => [
+      { status: 'extracted' as const, pageNumber: 1, rawText: '2024 wages\t$42,000' },
+    ]);
+    await expect(
+      processStoredOriginalForReviewer({
+        database,
+        reviewerId,
+        caseId,
+        documentVersionId,
+        root,
+        maximumBytes: bytes.byteLength,
+        maximumPages: 4,
+        extractionVersion: 'xlsx-native-v1',
+        createSourceUnitId: () => sourceUnitId,
+        extractXlsxPages,
+      }),
+    ).resolves.toEqual({ status: 'published', sourceUnitIds: [sourceUnitId], gaps: [] });
+    expect(extractXlsxPages).toHaveBeenCalledOnce();
+    await expect(
+      findTextSourceForReviewer(database, reviewerId, caseId, sourceUnitId),
+    ).resolves.toMatchObject({ rawText: '2024 wages\t$42,000' });
+    await expect(
+      processStoredOriginalForReviewer({
+        database,
+        reviewerId,
+        caseId,
+        documentVersionId,
+        root,
+        maximumBytes: bytes.byteLength,
+        maximumPages: 4,
+        extractionVersion: 'xlsx-native-v1',
+        createSourceUnitId: () => sourceUnitId,
+      }),
+    ).rejects.toThrow('xlsx_extraction_failed');
+    const suffixReference = await writeOriginal(
+      root,
+      { caseId, documentVersionId: suffixDocumentVersionId },
+      bytes,
+    );
+    await registerOriginalReference(database, reviewerId, suffixReference);
+    await registerOriginalDocumentMetadata(database, reviewerId, {
+      caseId,
+      documentVersionId: suffixDocumentVersionId,
+      fileName: '5-earnings.xlsx',
+      mediaType: 'application/octet-stream',
+    });
+    const suffixExtract = vi.fn(async () => [
+      { status: 'extracted' as const, pageNumber: 1, rawText: 'Suffix-selected sheet' },
+    ]);
+    await expect(
+      processStoredOriginalForReviewer({
+        database,
+        reviewerId,
+        caseId,
+        documentVersionId: suffixDocumentVersionId,
+        root,
+        maximumBytes: bytes.byteLength,
+        maximumPages: 4,
+        extractionVersion: 'xlsx-native-v1',
+        createSourceUnitId: () => suffixSourceUnitId,
+        extractXlsxPages: suffixExtract,
+      }),
+    ).resolves.toEqual({ status: 'published', sourceUnitIds: [suffixSourceUnitId], gaps: [] });
+    expect(suffixExtract).toHaveBeenCalledOnce();
+  } finally {
+    await database.close();
+    await rm(root, { recursive: true, force: true });
+  }
+}, 15_000);

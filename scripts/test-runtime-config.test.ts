@@ -5,7 +5,7 @@ test('bounds fast-test worker concurrency without relaxing quality gates', () =>
   expect(configuration).toMatchObject({
     test: {
       maxWorkers: 4,
-      pool: 'threads',
+      pool: 'forks',
       fileParallelism: false,
       allowOnly: false,
       passWithNoTests: false,

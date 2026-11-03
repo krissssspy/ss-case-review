@@ -12,6 +12,7 @@ import {
 import { findOriginalDocumentMetadata } from '@record-review/case-repository/original-document-metadata';
 import { extractDocxBytes } from '@record-review/document-processing/docx';
 import { extractPdfBytes } from '@record-review/document-processing/pdf';
+import { extractXlsxBytes } from '@record-review/document-processing/xlsx';
 import { detectDocumentSignature } from '@record-review/record-domain/document-signature';
 import { readOriginal } from '@record-review/record-storage/originals';
 import type { ValidatedClaimsResult } from './source-grounded-generation.ts';
@@ -52,6 +53,7 @@ type ProcessingInput = Readonly<{
 type StoredProcessingInput = Omit<ProcessingInput, 'extractPages' | 'format'> &
   Readonly<{
     extractDocxPages?: ProcessingInput['extractPages'];
+    extractXlsxPages?: ProcessingInput['extractPages'];
   }>;
 
 export function processStoredPdfOriginalForReviewer(input: StoredProcessingInput) {
@@ -72,6 +74,17 @@ export async function processStoredOriginalForReviewer(input: StoredProcessingIn
     metadata?.mediaType.toLowerCase() ===
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
     metadata?.fileName.toLowerCase().endsWith('.docx');
+  const isXlsx =
+    metadata?.mediaType.toLowerCase() ===
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+    metadata?.fileName.toLowerCase().endsWith('.xlsx');
+  if (isXlsx)
+    return processOriginalForReviewer({
+      ...input,
+      extractPages:
+        input.extractXlsxPages ??
+        ((bytes, maximumPages) => extractXlsxBytes(bytes, input.maximumBytes, maximumPages)),
+    });
   if (!isDocx) return processStoredPdfOriginalForReviewer(input);
   return processOriginalForReviewer({
     ...input,
