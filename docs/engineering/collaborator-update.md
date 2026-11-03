@@ -4,6 +4,8 @@ Date: November 2, 2026. Status: Phase 4 remains in progress. The application is 
 
 ## Latest increment
 
+Every artifact section now supports speaker filtering for ALJ, Plaintiff, Commissioner, and vocational-expert arguments alongside verification filtering and case-insensitive search. The filter preserves source quotations, investigation-safe wording, and record links. The full gate passes 383 fast tests, 10 native PostgreSQL tests, 9 Chromium workflows, 98.38% statement coverage, 97.10% branch coverage, and 100% mutation coverage across 4,437 mutants.
+
 Within each numbered Five-step section, claims now group under validated ALJ, Plaintiff, Commissioner, and vocational-expert headings, with an unassigned-speaker fallback. The grouping preserves direct quotations, investigation prompts, and source links. The full gate passes 382 fast tests, 10 native PostgreSQL tests, 9 Chromium workflows, 98.38% statement coverage, 97.09% branch coverage, and 100% mutation coverage across 4,425 mutants.
 
 The Five-step review section now groups explicitly numbered claims under Step 1 through Step 5 headings and keeps unnumbered claims under an Unassigned step heading. Grouping preserves direct quotations, investigation prompts, and source links. The full gate passes 381 fast tests, 10 native PostgreSQL tests, 9 Chromium workflows, 98.37% statement coverage, 97.08% branch coverage, and 100% mutation coverage across 4,401 mutants.
