@@ -4,6 +4,8 @@ Date: November 2, 2026. Status: Phase 4 remains in progress. The application is 
 
 ## Latest increment
 
+The DOCX-processing increment adds bounded Mammoth text extraction as a single source page and routes stored originals through DOCX or verified PDF processing based on persisted metadata. The fallback keeps exact bytes, source provenance, member authorization, and safe extraction failures. The full gate passes 388 fast tests, 10 native PostgreSQL tests, 9 Chromium workflows, 98.40% statement coverage, 97.14% branch coverage, and 100% mutation coverage across 4,497 mutants. Phase 4 remains in progress: XLSX/TIFF/OCR, complete artifact construction, and court deployment qualification remain pending.
+
 Every artifact section now supports speaker filtering for ALJ, Plaintiff, Commissioner, and vocational-expert arguments alongside verification filtering and case-insensitive search. The filter preserves source quotations, investigation-safe wording, and record links. The full gate passes 383 fast tests, 10 native PostgreSQL tests, 9 Chromium workflows, 98.38% statement coverage, 97.10% branch coverage, and 100% mutation coverage across 4,437 mutants.
 
 Within each numbered Five-step section, claims now group under validated ALJ, Plaintiff, Commissioner, and vocational-expert headings, with an unassigned-speaker fallback. The grouping preserves direct quotations, investigation prompts, and source links. The full gate passes 382 fast tests, 10 native PostgreSQL tests, 9 Chromium workflows, 98.38% statement coverage, 97.09% branch coverage, and 100% mutation coverage across 4,425 mutants.
