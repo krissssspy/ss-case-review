@@ -11,6 +11,7 @@
     "low": 95,
     "break": 100
   },
+  "dryRunTimeoutMinutes": 30,
   "concurrency": 2,
   "incremental": false,
   "ignoreStatic": true,

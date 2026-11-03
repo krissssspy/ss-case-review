@@ -676,7 +676,36 @@ export function SyntheticArtifactSection({
                     return stepClaims.length > 0 ? (
                       <section key={step} aria-labelledby={`five-step-${step}`}>
                         <h3 id={`five-step-${step}`}>Step {step}</h3>
-                        <ul className="artifact-claim-list">{stepClaims.map(renderClaim)}</ul>
+                        {(['alj', 'plaintiff', 'commissioner', 'vocational_expert'] as const).map(
+                          (speaker) => {
+                            const speakerClaims = stepClaims.filter(
+                              (claim) => claim.speaker === speaker,
+                            );
+                            return speakerClaims.length > 0 ? (
+                              <section
+                                key={speaker}
+                                aria-labelledby={`five-step-${step}-${speaker}`}
+                              >
+                                <h4 id={`five-step-${step}-${speaker}`}>
+                                  {CLAIM_SPEAKER_LABELS[speaker]}
+                                </h4>
+                                <ul className="artifact-claim-list">
+                                  {speakerClaims.map(renderClaim)}
+                                </ul>
+                              </section>
+                            ) : null;
+                          },
+                        )}
+                        {stepClaims.some((claim) => claim.speaker === undefined) ? (
+                          <section aria-labelledby={`five-step-${step}-unassigned`}>
+                            <h4 id={`five-step-${step}-unassigned`}>Unassigned speaker</h4>
+                            <ul className="artifact-claim-list">
+                              {stepClaims
+                                .filter((claim) => claim.speaker === undefined)
+                                .map(renderClaim)}
+                            </ul>
+                          </section>
+                        ) : null}
                       </section>
                     ) : null;
                   })}

@@ -989,6 +989,48 @@ test('groups five-step claims by their validated evaluation step', async () => {
   expect(screen.getByText('Step three evidence needs investigation.')).toBeVisible();
 });
 
+test('groups five-step claims by their validated speaker within a step', async () => {
+  const caseId = '00000000-0000-4000-8000-000000000002';
+  vi.mocked(listSyntheticDocumentProcessing).mockResolvedValueOnce([
+    {
+      documentVersionId: '00000000-0000-4000-8000-000000000021',
+      extractionVersion: 'pdfjs-native-v1',
+      state: 'published',
+      attemptCount: 1,
+      failureCode: null,
+      claims: {
+        status: 'validated',
+        claims: [
+          {
+            status: 'unverified',
+            claimId: 'five-step-alj',
+            text: 'The ALJ argument needs investigation.',
+            section: 'five_step',
+            step: 1,
+            speaker: 'alj',
+            message: "The review system couldn't find this evidence in the authorized case record.",
+            reason: 'quote_mismatch',
+          },
+          {
+            status: 'unverified',
+            claimId: 'five-step-plaintiff',
+            text: 'The plaintiff argument needs investigation.',
+            section: 'five_step',
+            step: 1,
+            speaker: 'plaintiff',
+            message: "The review system couldn't find this evidence in the authorized case record.",
+            reason: 'quote_mismatch',
+          },
+        ],
+      },
+    },
+  ]);
+
+  render(<SyntheticArtifactSection caseId={caseId} section="five_step" />);
+  expect(await screen.findByRole('heading', { name: 'ALJ' })).toBeVisible();
+  expect(screen.getByRole('heading', { name: 'Plaintiff' })).toBeVisible();
+});
+
 test('filters classified artifact entries with a case-insensitive search', async () => {
   const caseId = '00000000-0000-4000-8000-000000000002';
   vi.mocked(listSyntheticDocumentProcessing).mockResolvedValueOnce([
