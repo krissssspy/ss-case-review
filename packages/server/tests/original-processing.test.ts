@@ -12,9 +12,41 @@ import {
 import { writeOriginal } from '@record-review/record-storage/originals';
 import { expect, test, vi } from 'vitest';
 import {
+  detectStoredOriginalFormat,
   processPdfOriginalForReviewer,
   processStoredOriginalForReviewer,
 } from '../src/original-processing.ts';
+
+test('selects a bounded processing format from persisted document metadata', () => {
+  expect(
+    detectStoredOriginalFormat({ fileName: 'medical.tif', mediaType: 'application/octet-stream' }),
+  ).toBe('tiff');
+  expect(
+    detectStoredOriginalFormat({ fileName: 'medical.tiff', mediaType: 'application/octet-stream' }),
+  ).toBe('tiff');
+  expect(
+    detectStoredOriginalFormat({
+      fileName: 'decision.bin',
+      mediaType: 'image/tiff',
+    }),
+  ).toBe('tiff');
+  expect(detectStoredOriginalFormat(undefined)).toBe('pdf');
+  expect(
+    detectStoredOriginalFormat({
+      fileName: 'decision.bin',
+      mediaType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    }),
+  ).toBe('docx');
+  expect(
+    detectStoredOriginalFormat({
+      fileName: 'earnings.xlsx',
+      mediaType: 'application/octet-stream',
+    }),
+  ).toBe('xlsx');
+  expect(
+    detectStoredOriginalFormat({ fileName: 'decision.pdf', mediaType: 'application/pdf' }),
+  ).toBe('pdf');
+});
 
 function syntheticPdf(contents: readonly string[]): Uint8Array {
   const encoder = new TextEncoder();
@@ -485,6 +517,7 @@ test('processes a stored XLSX through metadata-selected extraction', async () =>
   const reviewerId = '00000000-0000-4000-8000-000000000411';
   const documentVersionId = '00000000-0000-4000-8000-000000000421';
   const suffixDocumentVersionId = '00000000-0000-4000-8000-000000000422';
+  const tiffDocumentVersionId = '00000000-0000-4000-8000-000000000423';
   const sourceUnitId = '00000000-0000-4000-8000-000000000431';
   const suffixSourceUnitId = '00000000-0000-4000-8000-000000000432';
   const bytes = new TextEncoder().encode('PK synthetic XLSX bytes');
@@ -574,6 +607,31 @@ test('processes a stored XLSX through metadata-selected extraction', async () =>
       }),
     ).resolves.toEqual({ status: 'published', sourceUnitIds: [suffixSourceUnitId], gaps: [] });
     expect(suffixExtract).toHaveBeenCalledOnce();
+    const tiffReference = await writeOriginal(
+      root,
+      { caseId, documentVersionId: tiffDocumentVersionId },
+      bytes,
+    );
+    await registerOriginalReference(database, reviewerId, tiffReference);
+    await registerOriginalDocumentMetadata(database, reviewerId, {
+      caseId,
+      documentVersionId: tiffDocumentVersionId,
+      fileName: '7-medical.tif',
+      mediaType: 'application/octet-stream',
+    });
+    await expect(
+      processStoredOriginalForReviewer({
+        database,
+        reviewerId,
+        caseId,
+        documentVersionId: tiffDocumentVersionId,
+        root,
+        maximumBytes: bytes.byteLength,
+        maximumPages: 4,
+        extractionVersion: 'tiff-ocr-v1',
+        createSourceUnitId: () => '00000000-0000-4000-8000-000000000433',
+      }),
+    ).rejects.toThrow('tiff_ocr_unavailable');
   } finally {
     await database.close();
     await rm(root, { recursive: true, force: true });

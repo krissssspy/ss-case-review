@@ -56,6 +56,34 @@ type StoredProcessingInput = Omit<ProcessingInput, 'extractPages' | 'format'> &
     extractXlsxPages?: ProcessingInput['extractPages'];
   }>;
 
+export type StoredOriginalFormat = 'pdf' | 'docx' | 'xlsx' | 'tiff';
+
+export function detectStoredOriginalFormat(
+  metadata:
+    | {
+        fileName: string;
+        mediaType: string;
+      }
+    | undefined,
+): StoredOriginalFormat {
+  if (!metadata) return 'pdf';
+  const mediaType = metadata.mediaType.toLowerCase();
+  const fileName = metadata.fileName.toLowerCase();
+  if (
+    mediaType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+    fileName.endsWith('.docx')
+  )
+    return 'docx';
+  if (
+    mediaType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+    fileName.endsWith('.xlsx')
+  )
+    return 'xlsx';
+  if (mediaType === 'image/tiff' || fileName.endsWith('.tif') || fileName.endsWith('.tiff'))
+    return 'tiff';
+  return 'pdf';
+}
+
 export function processStoredPdfOriginalForReviewer(input: StoredProcessingInput) {
   return processPdfOriginalForReviewer({
     ...input,
@@ -70,22 +98,16 @@ export async function processStoredOriginalForReviewer(input: StoredProcessingIn
     input.caseId,
     input.documentVersionId,
   );
-  const isDocx =
-    metadata?.mediaType.toLowerCase() ===
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-    metadata?.fileName.toLowerCase().endsWith('.docx');
-  const isXlsx =
-    metadata?.mediaType.toLowerCase() ===
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
-    metadata?.fileName.toLowerCase().endsWith('.xlsx');
-  if (isXlsx)
+  const format = detectStoredOriginalFormat(metadata);
+  if (format === 'xlsx')
     return processOriginalForReviewer({
       ...input,
       extractPages:
         input.extractXlsxPages ??
         ((bytes, maximumPages) => extractXlsxBytes(bytes, input.maximumBytes, maximumPages)),
     });
-  if (!isDocx) return processStoredPdfOriginalForReviewer(input);
+  if (format === 'tiff') throw new Error('tiff_ocr_unavailable');
+  if (format === 'pdf') return processStoredPdfOriginalForReviewer(input);
   return processOriginalForReviewer({
     ...input,
     extractPages:
