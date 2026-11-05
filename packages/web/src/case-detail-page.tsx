@@ -8,6 +8,7 @@ import {
   getSyntheticRevisionHistory,
   listSyntheticUploadAttempts,
   listSyntheticDocumentProcessing,
+  getSyntheticReviewArtifacts,
   retrySyntheticDocumentProcessing,
   listSyntheticOriginals,
   listSyntheticTextSources,
@@ -19,6 +20,7 @@ import {
   type NewSyntheticCorrectionSuggestion,
   type SyntheticCorrectionSuggestion,
   type SyntheticDocumentProcessing,
+  type SyntheticReviewArtifacts,
   type SyntheticOriginalReceipt,
   type SyntheticClaimFlag,
   type SyntheticProcessingClaim,
@@ -500,6 +502,9 @@ export function SyntheticArtifactSection({
   section: keyof typeof ARTIFACT_SECTION_LABELS;
 }) {
   const [processing, setProcessing] = useState<SyntheticDocumentProcessing[] | 'unavailable'>();
+  const [reviewArtifacts, setReviewArtifacts] = useState<
+    SyntheticReviewArtifacts | 'unavailable'
+  >();
   const [query, setQuery] = useState('');
   const [verificationFilter, setVerificationFilter] = useState<'all' | 'verified' | 'unverified'>(
     'all',
@@ -509,6 +514,15 @@ export function SyntheticArtifactSection({
   >('all');
   const load = useCallback(() => {
     setProcessing(undefined);
+    setReviewArtifacts(undefined);
+    if (typeof getSyntheticReviewArtifacts === 'function') {
+      void getSyntheticReviewArtifacts(caseId).then(setReviewArtifacts, () => {
+        void listSyntheticDocumentProcessing(caseId).then(setProcessing, () =>
+          setProcessing('unavailable'),
+        );
+      });
+      return;
+    }
     void listSyntheticDocumentProcessing(caseId).then(setProcessing, () =>
       setProcessing('unavailable'),
     );
@@ -518,13 +532,15 @@ export function SyntheticArtifactSection({
   }, [load]);
 
   const claims = deduplicateProcessingClaims(
-    processing && processing !== 'unavailable'
-      ? processing.flatMap((item) =>
-          item.claims?.status === 'validated'
-            ? item.claims.claims.filter((claim) => claim.section === section)
-            : [],
-        )
-      : /* Stryker disable next-line ArrayDeclaration -- the loading branch renders before this fallback can affect output. */ [],
+    reviewArtifacts && reviewArtifacts !== 'unavailable'
+      ? reviewArtifacts[section]
+      : processing && processing !== 'unavailable'
+        ? processing.flatMap((item) =>
+            item.claims?.status === 'validated'
+              ? item.claims.claims.filter((claim) => claim.section === section)
+              : [],
+          )
+        : /* Stryker disable next-line ArrayDeclaration -- the loading branch renders before this fallback can affect output. */ [],
   );
   const normalizedQuery = query.trim().toLocaleLowerCase();
   const filteredClaims = claims.filter(
@@ -564,14 +580,14 @@ export function SyntheticArtifactSection({
   return (
     <section className="panel artifact-section" aria-live="polite">
       <h2>{heading}</h2>
-      {processing === 'unavailable' ? (
+      {reviewArtifacts === 'unavailable' || processing === 'unavailable' ? (
         <>
           <p>{heading} is unavailable until processing can be confirmed.</p>
           <button className="button secondary-button" type="button" onClick={load}>
             Retry {heading.toLocaleLowerCase()}
           </button>
         </>
-      ) : processing === undefined ? (
+      ) : reviewArtifacts === undefined && processing === undefined ? (
         <p role="status">Loading {heading.toLocaleLowerCase()}…</p>
       ) : claims.length === 0 ? (
         <p>

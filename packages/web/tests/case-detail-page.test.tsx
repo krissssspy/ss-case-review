@@ -23,6 +23,7 @@ import {
 } from '../src/case-detail-page.tsx';
 import {
   getSyntheticDocumentProcessing,
+  getSyntheticReviewArtifacts,
   retrySyntheticDocumentProcessing,
   listSyntheticDocumentProcessing,
   getSyntheticOriginal,
@@ -47,6 +48,7 @@ import {
 vi.mock('../src/case-client.ts', () => ({
   getSyntheticCase: vi.fn(),
   getSyntheticDocumentProcessing: vi.fn(),
+  getSyntheticReviewArtifacts: vi.fn(),
   retrySyntheticDocumentProcessing: vi.fn(),
   listSyntheticDocumentProcessing: vi.fn(),
   getSyntheticOriginal: vi.fn(),
@@ -66,6 +68,7 @@ beforeEach(() => {
   vi.mocked(listSyntheticOriginals).mockResolvedValue([]);
   vi.mocked(listSyntheticTextSources).mockResolvedValue([]);
   vi.mocked(getSyntheticDocumentProcessing).mockResolvedValue(undefined);
+  vi.mocked(getSyntheticReviewArtifacts).mockRejectedValue(new Error('not configured'));
   vi.mocked(retrySyntheticDocumentProcessing).mockResolvedValue(undefined);
   vi.mocked(listSyntheticDocumentProcessing).mockResolvedValue([]);
   vi.mocked(verifySyntheticTextSpan).mockImplementation(

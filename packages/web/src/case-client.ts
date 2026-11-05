@@ -82,6 +82,13 @@ export type SyntheticClaimsResult =
   | Readonly<{ status: 'refused'; code: 'provider_error' | 'empty_response' | 'safety_refusal' }>
   | Readonly<{ status: 'invalid_output' }>;
 
+export type SyntheticReviewArtifacts = Readonly<{
+  summary: readonly SyntheticProcessingClaim[];
+  medical: readonly SyntheticProcessingClaim[];
+  procedural: readonly SyntheticProcessingClaim[];
+  five_step: readonly SyntheticProcessingClaim[];
+}>;
+
 export type SyntheticTextSource = Readonly<{
   sourceUnitId: string;
   caseId: string;
@@ -336,6 +343,38 @@ export async function listSyntheticDocumentProcessing(
   )
     throw new Error('document_processing_unavailable');
   return payload.processing;
+}
+
+function isSyntheticReviewArtifacts(
+  value: unknown,
+  caseId: string,
+): value is SyntheticReviewArtifacts {
+  if (typeof value !== 'object' || value === null) return false;
+  const artifacts = value as Partial<SyntheticReviewArtifacts>;
+  return (['summary', 'medical', 'procedural', 'five_step'] as const).every(
+    (section) =>
+      Array.isArray(artifacts[section]) &&
+      artifacts[section].every(
+        (claim) =>
+          isSyntheticProcessingClaims({ status: 'validated', claims: [claim] }, caseId) &&
+          claim.section === section,
+      ),
+  );
+}
+
+export async function getSyntheticReviewArtifacts(
+  caseId: string,
+): Promise<SyntheticReviewArtifacts> {
+  const response = await fetch(`/api/v1/cases/${caseId}/review-artifacts`, {
+    headers: { 'x-record-review-client': 'synthetic-workspace' },
+    cache: 'no-store',
+    redirect: 'error',
+  });
+  if (!response.ok) throw new Error('review_artifacts_unavailable');
+  const payload = (await response.json()) as { artifacts?: unknown } | null;
+  if (!isSyntheticReviewArtifacts(payload?.artifacts, caseId))
+    throw new Error('review_artifacts_unavailable');
+  return payload.artifacts;
 }
 
 function isSyntheticTextSourceReference(

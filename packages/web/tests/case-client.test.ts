@@ -12,6 +12,7 @@ import {
   listSyntheticOriginals,
   listSyntheticTextSources,
   listSyntheticDocumentProcessing,
+  getSyntheticReviewArtifacts,
   uploadSyntheticOriginal,
   submitSyntheticCorrectionSuggestion,
   listSyntheticCorrectionSuggestions,
@@ -19,6 +20,109 @@ import {
   getSyntheticRevisionHistory,
   listSyntheticUploadAttempts,
 } from '../src/case-client.ts';
+
+test('loads server-validated review artifacts with source-grounded claims', async () => {
+  const caseId = '00000000-0000-4000-8000-000000000002';
+  const artifacts = {
+    summary: [
+      {
+        status: 'verified' as const,
+        claimId: 'summary-1',
+        text: 'The ALJ found no disabling limitation.',
+        section: 'summary' as const,
+        source: {
+          caseId,
+          sourceUnitId: '00000000-0000-4000-8000-000000000011',
+          documentVersionId: '00000000-0000-4000-8000-000000000012',
+          recordRevision: 1,
+          documentSha256: 'a'.repeat(64),
+          extractionVersion: 'synthetic-v1',
+          pageNumber: 1,
+          start: 0,
+          end: 35,
+          quote: 'The ALJ found no disabling limitation.',
+        },
+      },
+    ],
+    medical: [],
+    procedural: [],
+    five_step: [],
+  };
+  const fetch = vi
+    .fn()
+    .mockResolvedValue({ ok: true, status: 200, json: async () => ({ artifacts }) });
+  vi.stubGlobal('fetch', fetch);
+
+  await expect(getSyntheticReviewArtifacts(caseId)).resolves.toEqual(artifacts);
+  expect(fetch).toHaveBeenCalledExactlyOnceWith(`/api/v1/cases/${caseId}/review-artifacts`, {
+    headers: { 'x-record-review-client': 'synthetic-workspace' },
+    cache: 'no-store',
+    redirect: 'error',
+  });
+});
+
+test('rejects malformed review artifact payloads', async () => {
+  const caseId = '00000000-0000-4000-8000-000000000002';
+  const validClaim = {
+    status: 'verified' as const,
+    claimId: 'summary-1',
+    text: 'A source-grounded claim.',
+    section: 'summary' as const,
+    source: {
+      caseId,
+      sourceUnitId: '00000000-0000-4000-8000-000000000011',
+      documentVersionId: '00000000-0000-4000-8000-000000000012',
+      recordRevision: 1,
+      documentSha256: 'a'.repeat(64),
+      extractionVersion: 'synthetic-v1',
+      pageNumber: 1,
+      start: 0,
+      end: 10,
+      quote: 'A source-grounded claim.',
+    },
+  };
+  const invalidPayloads: unknown[] = [
+    null,
+    42,
+    'not-an-artifact-object',
+    { summary: [], medical: [], procedural: [] },
+    {
+      summary: [validClaim],
+      medical: [],
+      procedural: [],
+      five_step: [{ ...validClaim, section: 'medical' }],
+    },
+    {
+      summary: [
+        {
+          ...validClaim,
+          source: { ...validClaim.source, caseId: '00000000-0000-4000-8000-000000000003' },
+        },
+      ],
+      medical: [],
+      procedural: [],
+      five_step: [],
+    },
+  ];
+  for (const payload of invalidPayloads) {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue({ ok: true, status: 200, json: async () => ({ artifacts: payload }) }),
+    );
+    await expect(getSyntheticReviewArtifacts(caseId)).rejects.toThrow(
+      'review_artifacts_unavailable',
+    );
+  }
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 503 }));
+  await expect(getSyntheticReviewArtifacts(caseId)).rejects.toThrow('review_artifacts_unavailable');
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => null }),
+  );
+  await expect(getSyntheticReviewArtifacts(caseId)).rejects.toThrow('review_artifacts_unavailable');
+});
 
 afterEach(() => vi.unstubAllGlobals());
 
