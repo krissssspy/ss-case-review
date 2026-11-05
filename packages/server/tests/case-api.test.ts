@@ -1226,6 +1226,146 @@ test('lists member-scoped processing records for a case', async () => {
   }
 });
 
+test('builds member-scoped review artifacts from validated processing claims', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'record-review-api-artifacts-test-'));
+  const caseId = '00000000-0000-4000-8000-000000000017';
+  try {
+    await api.close();
+    api = createDevelopmentApi(environment, database, { root, maximumBytes: 3 });
+    await createCase(database, { caseId, reviewerId, label: 'Synthetic artifact case' });
+    const documentVersionIds: string[] = [];
+    for (const payload of ['abc', 'def', 'ghi']) {
+      const uploaded = await api.inject({
+        method: 'POST',
+        url: `/api/v1/cases/${caseId}/synthetic-originals`,
+        headers: { ...requestHeaders, 'content-type': 'application/octet-stream' },
+        payload: Buffer.from(payload),
+      });
+      documentVersionIds.push(
+        uploaded.json<{ original: { documentVersionId: string } }>().original.documentVersionId,
+      );
+    }
+    const verified = {
+      status: 'verified',
+      claimId: 'claim-1',
+      text: 'The ALJ found a severe impairment.',
+      section: 'summary',
+    };
+    const unverified = {
+      status: 'unverified',
+      claimId: 'claim-1',
+      text: 'The ALJ found a severe impairment.',
+      section: 'summary',
+    };
+    await database.query(
+      `UPDATE document_processing_attempts SET state = 'published', claims_json = $1::jsonb
+       WHERE case_id = $2 AND document_version_id = $3`,
+      [
+        JSON.stringify({
+          status: 'validated',
+          claims: [
+            verified,
+            { status: 'verified', claimId: 'claim-2', text: 'Treatment occurred.' },
+            {
+              status: 'verified',
+              claimId: 'claim-4',
+              text: 'A medical visit occurred.',
+              section: 'medical',
+            },
+            {
+              status: 'verified',
+              claimId: 'claim-5',
+              text: 'The hearing occurred.',
+              section: 'procedural',
+            },
+            { status: 'verified', claimId: 'claim-6', text: 'Malformed source is ignored.' },
+            null,
+          ],
+        }),
+        caseId,
+        documentVersionIds[0],
+      ],
+    );
+    await database.query(
+      `UPDATE document_processing_attempts SET state = 'published', claims_json = $1::jsonb
+       WHERE case_id = $2 AND document_version_id = $3`,
+      [
+        JSON.stringify({ status: 'refused', code: 'provider_error' }),
+        caseId,
+        documentVersionIds[2],
+      ],
+    );
+    await database.query(
+      `UPDATE document_processing_attempts SET state = 'published', claims_json = $1::jsonb
+       WHERE case_id = $2 AND document_version_id = $3`,
+      [
+        JSON.stringify({
+          status: 'validated',
+          claims: [
+            unverified,
+            {
+              status: 'verified',
+              claimId: 'claim-3',
+              text: 'The RFC was limited.',
+              section: 'five_step',
+            },
+            { status: 'verified', text: 'Missing identity is ignored.' },
+          ],
+        }),
+        caseId,
+        documentVersionIds[1],
+      ],
+    );
+    const response = await api.inject({
+      method: 'GET',
+      url: `/api/v1/cases/${caseId}/review-artifacts`,
+      headers: requestHeaders,
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      artifacts: {
+        summary: [
+          verified,
+          { status: 'verified', claimId: 'claim-2', text: 'Treatment occurred.' },
+          { status: 'verified', claimId: 'claim-6', text: 'Malformed source is ignored.' },
+        ],
+        medical: [
+          {
+            status: 'verified',
+            claimId: 'claim-4',
+            text: 'A medical visit occurred.',
+            section: 'medical',
+          },
+        ],
+        procedural: [
+          {
+            status: 'verified',
+            claimId: 'claim-5',
+            text: 'The hearing occurred.',
+            section: 'procedural',
+          },
+        ],
+        five_step: [
+          {
+            status: 'verified',
+            claimId: 'claim-3',
+            text: 'The RFC was limited.',
+            section: 'five_step',
+          },
+        ],
+      },
+    });
+    const hidden = await api.inject({
+      method: 'GET',
+      url: '/api/v1/cases/00000000-0000-4000-8000-000000000099/review-artifacts',
+      headers: requestHeaders,
+    });
+    expect(hidden.statusCode).toBe(404);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+}, 15_000);
+
 test('requeues a failed processing record for a case member', async () => {
   const root = await mkdtemp(join(tmpdir(), 'record-review-api-processing-retry-test-'));
   const caseId = '00000000-0000-4000-8000-000000000017';

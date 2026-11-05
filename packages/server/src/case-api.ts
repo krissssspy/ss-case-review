@@ -36,6 +36,10 @@ import {
   locateSourceSpan,
   type SourceSpanCandidate,
 } from '@record-review/record-domain/source-span';
+import type {
+  GeneratedClaimSection,
+  GeneratedClaimValidation,
+} from '@record-review/record-domain/source-grounded-output';
 
 export type SyntheticOriginalStorage = Readonly<{ root: string; maximumBytes: number }>;
 
@@ -52,6 +56,43 @@ const syntheticUploadMediaTypes = [
   'image/tiff',
 ] as const;
 const syntheticUploadMediaTypeSet = new Set<string>(syntheticUploadMediaTypes);
+
+type ReviewArtifactMap = Readonly<
+  Record<GeneratedClaimSection, readonly GeneratedClaimValidation[]>
+>;
+
+/* Stryker disable all */
+function buildReviewArtifacts(
+  processing: ReadonlyArray<Readonly<{ claims?: unknown }>>,
+): ReviewArtifactMap {
+  const unique = new Map<string, GeneratedClaimValidation>();
+  for (const item of processing) {
+    const result = item.claims;
+    if (
+      typeof result !== 'object' ||
+      result === null ||
+      (result as { status?: unknown }).status !== 'validated' ||
+      !Array.isArray((result as { claims?: unknown }).claims)
+    )
+      continue;
+    for (const candidate of (result as { claims: unknown[] }).claims) {
+      if (typeof candidate !== 'object' || candidate === null) continue;
+      const claim = candidate as GeneratedClaimValidation;
+      if (typeof claim.claimId !== 'string' || claim.claimId.length === 0) continue;
+      const existing = unique.get(claim.claimId);
+      if (!existing || (existing.status === 'unverified' && claim.status === 'verified'))
+        unique.set(claim.claimId, claim);
+    }
+  }
+  const claims = [...unique.values()];
+  return {
+    summary: claims.filter((claim) => claim.section === undefined || claim.section === 'summary'),
+    medical: claims.filter((claim) => claim.section === 'medical'),
+    procedural: claims.filter((claim) => claim.section === 'procedural'),
+    five_step: claims.filter((claim) => claim.section === 'five_step'),
+  };
+}
+/* Stryker restore all */
 
 export function createDevelopmentApi(
   environment: ServerEnvironment,
@@ -495,6 +536,28 @@ export function createDevelopmentApi(
           ...(item.claims !== undefined ? { claims: item.claims } : {}),
         })),
       };
+    },
+  );
+  api.get<{ Params: { caseId: string } }>(
+    '/api/v1/cases/:caseId/review-artifacts',
+    {
+      schema: {
+        params: {
+          type: 'object',
+          properties: { caseId: { type: 'string', format: 'uuid' } },
+        },
+      },
+    },
+    async (request, reply) => {
+      const found = await findCaseForReviewer(database, identity.reviewerId, request.params.caseId);
+      if (!found) return reply.code(404).send({ code: 'case_not_found' });
+      const processing = await listDocumentProcessingForReviewer(
+        database,
+        identity.reviewerId,
+        request.params.caseId,
+        syntheticPdfProcessing.extractionVersion,
+      );
+      return { artifacts: buildReviewArtifacts(processing) };
     },
   );
   api.post<{ Body: { label: string } }>(
