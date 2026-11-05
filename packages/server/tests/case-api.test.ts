@@ -1287,10 +1287,13 @@ test('builds member-scoped review artifacts from validated processing claims', a
       ],
     );
     await database.query(
-      `UPDATE document_processing_attempts SET state = 'published', claims_json = $1::jsonb
+      `UPDATE document_processing_attempts SET state = 'queued', claims_json = $1::jsonb
        WHERE case_id = $2 AND document_version_id = $3`,
       [
-        JSON.stringify({ status: 'refused', code: 'provider_error' }),
+        JSON.stringify({
+          status: 'validated',
+          claims: [{ status: 'verified', claimId: 'in-flight', text: 'Not ready yet.' }],
+        }),
         caseId,
         documentVersionIds[2],
       ],

@@ -63,10 +63,11 @@ type ReviewArtifactMap = Readonly<
 
 /* Stryker disable all */
 function buildReviewArtifacts(
-  processing: ReadonlyArray<Readonly<{ claims?: unknown }>>,
+  processing: ReadonlyArray<Readonly<{ state?: unknown; claims?: unknown }>>,
 ): ReviewArtifactMap {
   const unique = new Map<string, GeneratedClaimValidation>();
   for (const item of processing) {
+    if (item.state !== 'published') continue;
     const result = item.claims;
     if (
       typeof result !== 'object' ||
